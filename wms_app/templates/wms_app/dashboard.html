@@ -1,0 +1,95 @@
+{% extends 'wms_app/base.html' %}
+
+{% block content %}
+<div class="page-header"><h1>{{ page_title }}</h1></div>
+<p>현재 필터: <strong>{{ selected_center|default:'전체 센터' }}</strong>, <strong>{{ selected_shipper|default:'전체 화주사' }}</strong></p>
+<div class="dashboard-container">
+    <div class="dashboard-item">
+        <div class="form-container">
+            <div class="date-filter-container">
+                <label for="order-date-picker">주문날짜 선택:</label>
+                <input type="text" id="order-date-picker" class="date-range-picker" readonly>
+            </div>
+            <h2 style="border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 20px;">주문 현황</h2>
+            <div style="width: 100%; max-width: 400px; margin: 20px auto;">
+                <canvas id="orderStatusChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="dashboard-item">
+        <div class="form-container">
+            <div class="date-filter-container">
+                <label for="delivery-date-picker">배송날짜 선택:</label>
+                <input type="text" id="delivery-date-picker" class="date-range-picker" readonly>
+            </div>
+            <h2 style="border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 20px;">배송 현황</h2>
+            <div style="width: 100%; max-width: 400px; margin: 20px auto; height: 120px;">
+                <canvas id="deliveryStatusChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Dashboard-specific JavaScript
+document.addEventListener('DOMContentLoaded', () => {
+    let orderChartInstance = null;
+    let deliveryChartInstance = null;
+
+    function updateOrderStatusChart(startDate, endDate) {
+        fetch(`/api/order-chart/?start=${startDate}&end=${endDate}`)
+            .then(response => response.json())
+            .then(data => {
+                const chartData = {
+                    labels: data.labels,
+                    datasets: [{
+                        label: '주문 건수',
+                        data: data.data,
+                        backgroundColor: ['#3498db', '#1abc9c', '#e74c3c'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                };
+                const ctx = document.getElementById('orderStatusChart')?.getContext('2d');
+                if (!ctx) return;
+                if (orderChartInstance) orderChartInstance.destroy();
+                orderChartInstance = new Chart(ctx, {
+                    type: 'pie', data: chartData,
+                    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+                });
+            });
+    }
+
+    function updateDeliveryStatusChart(startDate, endDate) {
+        fetch(`/api/delivery-chart/?start=${startDate}&end=${endDate}`)
+            .then(response => response.json())
+            .then(data => {
+                const chartData = {
+                    labels: [''], 
+                    datasets: [
+                        { label: '집하완료', data: [data['집하완료']], backgroundColor: '#f39c12' },
+                        { label: '배송중', data: [data['배송중']], backgroundColor: '#3498db' },
+                        { label: '배송완료', data: [data['배송완료']], backgroundColor: '#2ecc71' }
+                    ]
+                };
+                const ctx = document.getElementById('deliveryStatusChart')?.getContext('2d');
+                if (!ctx) return;
+                if (deliveryChartInstance) deliveryChartInstance.destroy();
+                deliveryChartInstance = new Chart(ctx, {
+                    type: 'bar', data: chartData,
+                    options: {
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: true, position: 'bottom' } },
+                        scales: { x: { stacked: true, display: false }, y: { stacked: true, display: false } }
+                    }
+                });
+            });
+    }
+
+    initDatePicker('order-date-picker', updateOrderStatusChart);
+    initDatePicker('delivery-date-picker', updateDeliveryStatusChart);
+});
+</script>
+{% endblock %}
