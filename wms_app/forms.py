@@ -1,5 +1,6 @@
 from django import forms
-from .models import Center, Shipper, Courier, Product
+# --- [수정] 아래 라인에 우리가 만든 User 모델을 추가합니다 ---
+from .models import Center, Shipper, Courier, Product, User
 
 class CenterForm(forms.ModelForm):
     class Meta:
@@ -55,4 +56,20 @@ class StockUpdateForm(forms.ModelForm):
         }
         labels = {
             'quantity': '재고 수량'
+        }
+
+# --- [추가] 사용자 정보 수정을 위한 폼 ---
+class UserUpdateForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['role', 'center', 'shipper']
+        widgets = {
+            'role': forms.Select(attrs={'class': 'form-control'}),
+            'center': forms.Select(attrs={'class': 'form-control'}),
+            'shipper': forms.Select(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'role': '사용자 역할',
+            'center': '소속 센터',
+            'shipper': '소속 화주사',
         }

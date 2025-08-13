@@ -3,23 +3,22 @@ Django settings for wms_project project.
 """
 
 from pathlib import Path
-import os # 이 줄이 없으면 아래 os.path.join에서 오류가 납니다.
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-##################################################' # 이 부분은 원래 있던 그대로 두세요.
+SECRET_KEY = 'django-insecure-##################################################'
 
 DEBUG = True
 
-# ----------------- 이 부분을 수정했습니다 -----------------
-# 기존 IP와 함께 새로운 IP 주소를 추가하여 두 주소 모두 접속을 허용합니다.
-ALLOWED_HOSTS = ['192.168.2.116', '192.168.2.121']
-# ---------------------------------------------------------
+ALLOWED_HOSTS = ['192.168.2.116', '192.168.2.121', '192.168.2.127']
 
 
 # Application definition
 
+# ----------------- [수정] INSTALLED_APPS 설정 -----------------
+# 'wms_app' 대신 새로 만든 앱 설정 클래스의 경로를 적어줍니다.
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -27,18 +26,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'wms_app',
+    'wms_app.apps.WmsAppConfig', # <-- 이 부분을 수정했습니다!
 ]
+# ---------------------------------------------------------
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'wms_app.middleware.FilterPersistenceMiddleware', # 이 미들웨어가 누락되었을 수 있습니다. 추가해주세요.
+    'wms_app.middleware.FilterPersistenceMiddleware',
 ]
 
 ROOT_URLCONF = 'wms_project.urls'
@@ -54,7 +56,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'wms_app.context_processors.filters', # 이 컨텍스트 프로세서가 누락되었을 수 있습니다. 추가해주세요.
+                'wms_app.context_processors.filters',
             ],
         },
     },
@@ -88,14 +90,8 @@ USE_I18N = True
 USE_TZ = True
 
 
-# --- Static files (CSS, JavaScript, Images) ---
-# 이 부분이 가장 중요합니다!
-
-# 웹 페이지에서 정적 파일을 부를 때 사용할 URL (예: /static/css/style.css)
+# Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
-
-# 개발 환경에서 장고가 정적 파일을 추가로 검색할 경로 목록
-# 프로젝트 최상위 폴더에 있는 'static' 폴더를 가리키도록 설정합니다.
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
@@ -103,3 +99,6 @@ STATICFILES_DIRS = [
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Custom User Model 설정
+AUTH_USER_MODEL = 'wms_app.User'

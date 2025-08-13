@@ -5,10 +5,10 @@ from django.http import JsonResponse, HttpResponseBadRequest
 from django.db.models import Sum, F, Count
 from datetime import datetime
 from django.db import transaction
-# from django.views.decorators.http import require_POST # 삭제 기능이 없어졌으므로 이 줄을 삭제하거나 주석 처리합니다.
 
-from .models import *
-from .forms import *
+# --- [수정] User와 UserUpdateForm을 import 목록에 추가 ---
+from .models import Center, Shipper, Courier, Product, Order, StockMovement, User
+from .forms import CenterForm, ShipperForm, CourierForm, ProductForm, StockIOForm, StockUpdateForm, UserUpdateForm
 
 
 # --- 대시보드 ---
@@ -157,14 +157,6 @@ def stock_movement_history(request):
     }
     return render(request, 'wms_app/stock_history.html', context)
 
-# --- 아래 stock_history_delete 함수를 삭제합니다 ---
-# @require_POST
-# def stock_history_delete(request, pk):
-#     movement = get_object_or_404(StockMovement, pk=pk)
-#     movement.delete()
-#     return redirect('stock_history')
-
-
 # --- 임시 페이지 뷰 (Placeholder Views) ---
 def order_manage(request):
     return render(request, 'wms_app/placeholder_page.html', {'page_title': '주문', 'active_menu': 'orders'})
@@ -187,8 +179,35 @@ def settlement_billing(request):
 def settlement_config(request):
     return render(request, 'wms_app/placeholder_page.html', {'page_title': '정산내역설정', 'active_menu': 'settlement'})
 
+# --- [수정] 사용자관리 뷰 ---
 def user_manage(request):
-    return render(request, 'wms_app/placeholder_page.html', {'page_title': '사용자관리', 'active_menu': 'management'})
+    # is_superuser가 아닌 모든 사용자를 조회합니다.
+    user_list = User.objects.filter(is_superuser=False)
+    context = {
+        'page_title': '사용자 관리',
+        'active_menu': 'management',
+        'user_list': user_list,
+    }
+    return render(request, 'wms_app/user_list.html', context)
+
+# --- [추가] 사용자 정보 수정 뷰 ---
+def user_update(request, pk):
+    user_instance = get_object_or_404(User, pk=pk)
+    if request.method == 'POST':
+        form = UserUpdateForm(request.POST, instance=user_instance)
+        if form.is_valid():
+            form.save()
+            return redirect('user_manage')
+    else:
+        form = UserUpdateForm(instance=user_instance)
+
+    context = {
+        'form': form,
+        'target_user': user_instance,
+        'page_title': '사용자 역할 및 소속 수정',
+        'active_menu': 'management',
+    }
+    return render(request, 'wms_app/user_form.html', context)
 
 
 # --- 설정: 클래스 기반 뷰 (CRUD) ---

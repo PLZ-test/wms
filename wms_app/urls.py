@@ -24,7 +24,11 @@ urlpatterns = [
     # Management
     path('management/orders/', views.order_manage_new, name='order_manage_new'),
     path('management/stock/', views.stock_manage, name='stock_manage'),
+    
+    # --- [수정] 사용자 관리 URL 아래에 수정 페이지 URL 추가 ---
     path('management/users/', views.user_manage, name='user_manage'),
+    path('management/users/<int:pk>/update/', views.user_update, name='user_update'),
+    
     path('management/shippers/', views.ShipperListView.as_view(), name='shipper_list'),
     path('stock/<int:pk>/update/', views.stock_update, name='stock_update'),
 
