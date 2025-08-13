@@ -12,7 +12,7 @@ SECRET_KEY = 'django-insecure-##################################################
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.2.116']
+ALLOWED_HOSTS = ['127.0.0.1'] # 이 부분에 '127.0.0.1'을 추가했습니다.
 
 
 # Application definition
