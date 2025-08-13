@@ -39,21 +39,12 @@
     <nav class="sidebar">
         <ul class="sidebar-menu">
             <li><a href="{% url 'dashboard' %}"><i class="fas fa-chart-line"></i><span>대시보드</span></a></li>
+            <li><a href="{% url 'order_manage' %}"><i class="fas fa-shopping-cart"></i><span>주문</span></a></li>
             <li class="has-sub-menu">
-                <div class="main-item"><div class="main-item-link"><i class="fas fa-shopping-cart"></i><span>주문</span></div><i class="fas fa-chevron-right arrow-icon {% if active_menu == 'orders' %}rotated{% endif %}"></i></div>
-                <ul class="sub-menu {% if active_menu == 'orders' %}active{% endif %}">
-                    <li><a href="{% url 'order_collect' %}">수집</a></li>
-                    <li><a href="{% url 'order_match' %}">매칭</a></li>
-                    <li><a href="{% url 'order_combine' %}">합포장</a></li>
-                    <li><a href="{% url 'order_invoice' %}">송장</a></li>
-                    <li><a href="{% url 'order_manage' %}">관리</a></li>
-                </ul>
-            </li>
-            <li class="has-sub-menu">
-                <div class="main-item"><div class="main-item-link"><i class="fas fa-box-open"></i><span>재고</span></div><i class="fas fa-chevron-right arrow-icon {% if active_menu == 'stock' %}rotated{% endif %}"></i></div>
-                <ul class="sub-menu {% if active_menu == 'stock' %}active{% endif %}">
-                    <li><a href="{% url 'stock_io' %}">입출고</a></li>
-                    <li><a href="{% url 'stock_manage' %}">재고관리</a></li>
+                <div class="main-item"><div class="main-item-link"><i class="fas fa-exchange-alt"></i><span>입출고</span></div><i class="fas fa-chevron-right arrow-icon {% if active_menu == 'inout' %}rotated{% endif %}"></i></div>
+                <ul class="sub-menu {% if active_menu == 'inout' %}active{% endif %}">
+                    <li><a href="{% url 'stock_in' %}">입고</a></li>
+                    <li><a href="{% url 'stock_out' %}">출고</a></li>
                 </ul>
             </li>
             <li class="has-sub-menu">
@@ -61,14 +52,16 @@
                 <ul class="sub-menu {% if active_menu == 'settlement' %}active{% endif %}">
                     <li><a href="{% url 'settlement_status' %}">현황</a></li>
                     <li><a href="{% url 'settlement_billing' %}">청구내역</a></li>
+                    <li><a href="{% url 'settlement_config' %}">정산내역설정</a></li>
                 </ul>
             </li>
             <li class="has-sub-menu">
-                <div class="main-item"><div class="main-item-link"><i class="fas fa-cog"></i><span>설정</span></div><i class="fas fa-chevron-right arrow-icon {% if active_menu == 'settings' %}rotated{% endif %}"></i></div>
-                <ul class="sub-menu {% if active_menu == 'settings' %}active{% endif %}">
-                    <li><a href="{% url 'center_list' %}">센터</a></li>
-                    <li><a href="{% url 'shipper_list' %}">화주사</a></li>
-                    <li><a href="{% url 'courier_list' %}">택배사</a></li>
+                <div class="main-item"><div class="main-item-link"><i class="fas fa-cog"></i><span>관리</span></div><i class="fas fa-chevron-right arrow-icon {% if active_menu == 'management' %}rotated{% endif %}"></i></div>
+                <ul class="sub-menu {% if active_menu == 'management' %}active{% endif %}">
+                    <li><a href="{% url 'order_manage_new' %}">주문관리</a></li>
+                    <li><a href="{% url 'stock_manage' %}">재고관리</a></li>
+                    <li><a href="{% url 'user_manage' %}">사용자관리</a></li>
+                    <li><a href="{% url 'shipper_list' %}">화주사관리</a></li>
                 </ul>
             </li>
         </ul>

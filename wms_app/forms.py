@@ -1,5 +1,20 @@
 from django import forms
-from .models import Center, Shipper, Courier, Product
+from django.contrib.auth.forms import UserCreationForm
+from .models import Center, Shipper, Courier, Product, User
+
+# --- [추가] 회원가입 폼 ---
+class CustomUserCreationForm(UserCreationForm):
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ('username', 'email') # 회원가입 시 아이디와 이메일만 받도록 설정
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        # 회원가입 시 사용자를 비활성 상태로 만듭니다.
+        user.is_active = False
+        if commit:
+            user.save()
+        return user
 
 class CenterForm(forms.ModelForm):
     class Meta:
@@ -55,4 +70,19 @@ class StockUpdateForm(forms.ModelForm):
         }
         labels = {
             'quantity': '재고 수량'
+        }
+
+class UserUpdateForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['role', 'center', 'shipper']
+        widgets = {
+            'role': forms.Select(attrs={'class': 'form-control'}),
+            'center': forms.Select(attrs={'class': 'form-control'}),
+            'shipper': forms.Select(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'role': '사용자 역할',
+            'center': '소속 센터',
+            'shipper': '소속 화주사',
         }
