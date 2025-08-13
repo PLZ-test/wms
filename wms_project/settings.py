@@ -52,7 +52,7 @@ TEMPLATES = [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
-                'django.template.context_processors.messages',
+                'django.contrib.messages.context_processors.messages',  # 이 부분이 추가되었습니다.
                 'wms_app.context_processors.filters',
             ],
         },
