@@ -132,8 +132,6 @@ header {
     flex-grow: 1;
 }
 
-/* --- 이 부분이 수정되었습니다 --- */
-/* 아이콘과 텍스트 사이의 간격을 모든 메뉴 항목에 동일하게 적용합니다. */
 .sidebar-menu a > i,
 .sidebar-menu .main-item-link > i {
     margin-right: 15px;
@@ -141,7 +139,6 @@ header {
     width: 20px;
     text-align: center;
 }
-/* -------------------------- */
 
 .sidebar-menu .sub-menu {
     max-height: 0;
@@ -414,6 +411,93 @@ header {
     color: white;
     border-color: var(--info-color);
 }
+
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--main-bg-color);
+}
+
+.auth-form {
+    width: 100%;
+    max-width: 400px;
+    padding: 40px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.auth-form h1 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.auth-form .form-group {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.auth-form label {
+    text-align: left;
+    margin-bottom: 5px;
+}
+
+.auth-form input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.btn.btn-block {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.auth-links {
+    margin-top: 20px;
+    font-size: 0.9em;
+}
+
+.auth-links a {
+    color: var(--info-color);
+    text-decoration: none;
+}
+
+.auth-links a:hover {
+    text-decoration: underline;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    text-align: left;
+}
+
+.message.error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.message.info {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+.message.success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
 
 @media (max-width: 992px) {
     .header-filters {

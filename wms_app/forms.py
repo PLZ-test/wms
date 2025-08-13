@@ -1,6 +1,20 @@
 from django import forms
-# --- [수정] 아래 라인에 우리가 만든 User 모델을 추가합니다 ---
+from django.contrib.auth.forms import UserCreationForm
 from .models import Center, Shipper, Courier, Product, User
+
+# --- [추가] 회원가입 폼 ---
+class CustomUserCreationForm(UserCreationForm):
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ('username', 'email') # 회원가입 시 아이디와 이메일만 받도록 설정
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        # 회원가입 시 사용자를 비활성 상태로 만듭니다.
+        user.is_active = False
+        if commit:
+            user.save()
+        return user
 
 class CenterForm(forms.ModelForm):
     class Meta:
@@ -58,7 +72,6 @@ class StockUpdateForm(forms.ModelForm):
             'quantity': '재고 수량'
         }
 
-# --- [추가] 사용자 정보 수정을 위한 폼 ---
 class UserUpdateForm(forms.ModelForm):
     class Meta:
         model = User

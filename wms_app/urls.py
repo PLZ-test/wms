@@ -1,7 +1,14 @@
 from django.urls import path
 from . import views
+from django.contrib.auth import views as auth_views
 
 urlpatterns = [
+    # --- [추가] 인증 관련 URL ---
+    path('login/', views.CustomLoginView.as_view(), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
+    path('signup/', views.signup_view, name='signup'),
+    path('signup/done/', views.signup_done_view, name='signup_done'),
+
     # Dashboard
     path('', views.dashboard, name='dashboard'),
     path('api/order-chart/', views.order_chart_data, name='order_chart_data'),
@@ -25,7 +32,6 @@ urlpatterns = [
     path('management/orders/', views.order_manage_new, name='order_manage_new'),
     path('management/stock/', views.stock_manage, name='stock_manage'),
     
-    # --- [수정] 사용자 관리 URL 아래에 수정 페이지 URL 추가 ---
     path('management/users/', views.user_manage, name='user_manage'),
     path('management/users/<int:pk>/update/', views.user_update, name='user_update'),
     

@@ -6,16 +6,56 @@ from django.db.models import Sum, F, Count
 from datetime import datetime
 from django.db import transaction
 
-# --- [수정] User와 UserUpdateForm을 import 목록에 추가 ---
+# --- [수정] 인증 관련 모듈 import ---
+from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import LoginView
+from django.contrib import messages
+
 from .models import Center, Shipper, Courier, Product, Order, StockMovement, User
-from .forms import CenterForm, ShipperForm, CourierForm, ProductForm, StockIOForm, StockUpdateForm, UserUpdateForm
+# --- [수정] CustomUserCreationForm 추가 ---
+from .forms import CenterForm, ShipperForm, CourierForm, ProductForm, StockIOForm, StockUpdateForm, UserUpdateForm, CustomUserCreationForm
 
 
-# --- 대시보드 ---
+# --- [추가] 인증(로그인, 회원가입) 관련 뷰 ---
+class CustomLoginView(LoginView):
+    template_name = 'registration/login.html'
+
+    def form_invalid(self, form):
+        # 로그인 실패 시 처리 (아이디, 비밀번호 틀림)
+        messages.error(self.request, '아이디 또는 비밀번호가 올바르지 않습니다.')
+        return super().form_invalid(form)
+    
+    def form_valid(self, form):
+        user = form.get_user()
+        # 계정이 비활성화 상태인 경우
+        if not user.is_active:
+            messages.error(self.request, '아직 승인되지 않은 계정입니다. 관리자에게 문의하세요.')
+            return self.form_invalid(form)
+        return super().form_valid(form)
+
+def signup_view(request):
+    if request.method == 'POST':
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('signup_done')
+    else:
+        form = CustomUserCreationForm()
+    return render(request, 'registration/signup.html', {'form': form})
+
+def signup_done_view(request):
+    return render(request, 'registration/signup_done.html')
+
+
+# --- [수정] 기존 뷰들에 @login_required 추가 ---
+@login_required
 def dashboard(request):
     context = {'page_title': '대시보드', 'active_menu': 'dashboard'}
     return render(request, 'wms_app/dashboard.html', context)
 
+@login_required
 def order_chart_data(request):
     start_date_str = request.GET.get('start')
     end_date_str = request.GET.get('end')
@@ -38,6 +78,7 @@ def order_chart_data(request):
         'data': list(data.values()),
     })
 
+@login_required
 def delivery_chart_data(request):
     start_date_str = request.GET.get('start')
     end_date_str = request.GET.get('end')
@@ -58,8 +99,7 @@ def delivery_chart_data(request):
 
     return JsonResponse(data)
 
-
-# --- 재고 관리 ---
+@login_required
 def stock_manage(request):
     queryset = Product.objects.select_related('shipper__center').all()
     selected_center = request.session.get('selected_center')
@@ -85,6 +125,7 @@ def stock_manage(request):
     }
     return render(request, 'wms_app/generic_list.html', context)
 
+@login_required
 @transaction.atomic
 def stock_io_view(request):
     if request.method == 'POST':
@@ -130,6 +171,7 @@ def stock_io_view(request):
     context = {'page_title': '재고 입출고', 'products': products, 'active_menu': 'inout'}
     return render(request, 'wms_app/stock_io.html', context)
 
+@login_required
 def stock_update(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
@@ -148,6 +190,7 @@ def stock_update(request, pk):
     }
     return render(request, 'wms_app/stock_update_form.html', context)
 
+@login_required
 def stock_movement_history(request):
     movements = StockMovement.objects.select_related('product__shipper').order_by('-timestamp')
     context = {
@@ -157,29 +200,35 @@ def stock_movement_history(request):
     }
     return render(request, 'wms_app/stock_history.html', context)
 
-# --- 임시 페이지 뷰 (Placeholder Views) ---
+@login_required
 def order_manage(request):
     return render(request, 'wms_app/placeholder_page.html', {'page_title': '주문', 'active_menu': 'orders'})
 
+@login_required
 def order_manage_new(request):
     return render(request, 'wms_app/placeholder_page.html', {'page_title': '주문 관리', 'active_menu': 'management'})
 
+@login_required
 def stock_in(request):
     return render(request, 'wms_app/placeholder_page.html', {'page_title': '입고', 'active_menu': 'inout'})
 
+@login_required
 def stock_out(request):
     return render(request, 'wms_app/placeholder_page.html', {'page_title': '출고', 'active_menu': 'inout'})
 
+@login_required
 def settlement_status(request):
     return render(request, 'wms_app/placeholder_page.html', {'page_title': '정산 현황', 'active_menu': 'settlement'})
 
+@login_required
 def settlement_billing(request):
     return render(request, 'wms_app/placeholder_page.html', {'page_title': '정산 청구내역', 'active_menu': 'settlement'})
 
+@login_required
 def settlement_config(request):
     return render(request, 'wms_app/placeholder_page.html', {'page_title': '정산내역설정', 'active_menu': 'settlement'})
 
-# --- [수정] 사용자관리 뷰 ---
+@login_required
 def user_manage(request):
     # is_superuser가 아닌 모든 사용자를 조회합니다.
     user_list = User.objects.filter(is_superuser=False)
@@ -190,7 +239,7 @@ def user_manage(request):
     }
     return render(request, 'wms_app/user_list.html', context)
 
-# --- [추가] 사용자 정보 수정 뷰 ---
+@login_required
 def user_update(request, pk):
     user_instance = get_object_or_404(User, pk=pk)
     if request.method == 'POST':
@@ -209,9 +258,8 @@ def user_update(request, pk):
     }
     return render(request, 'wms_app/user_form.html', context)
 
-
-# --- 설정: 클래스 기반 뷰 (CRUD) ---
-class CenterListView(ListView):
+# --- [수정] 클래스 기반 뷰에 LoginRequiredMixin 추가 ---
+class CenterListView(LoginRequiredMixin, ListView):
     model = Center
     template_name = 'wms_app/generic_list.html'
     context_object_name = 'object_list'
@@ -228,7 +276,7 @@ class CenterListView(ListView):
         })
         return context
 
-class CenterCreateView(CreateView):
+class CenterCreateView(LoginRequiredMixin, CreateView):
     model = Center
     form_class = CenterForm
     template_name = 'wms_app/generic_form.html'
@@ -239,7 +287,7 @@ class CenterCreateView(CreateView):
         context['active_menu'] = 'management'
         return context
 
-class CenterUpdateView(UpdateView):
+class CenterUpdateView(LoginRequiredMixin, UpdateView):
     model = Center
     form_class = CenterForm
     template_name = 'wms_app/generic_form.html'
@@ -251,11 +299,11 @@ class CenterUpdateView(UpdateView):
         context['delete_url_name'] = 'center_delete'
         return context
 
-class CenterDeleteView(DeleteView):
+class CenterDeleteView(LoginRequiredMixin, DeleteView):
     model = Center
     success_url = reverse_lazy('center_list')
 
-class ShipperListView(ListView):
+class ShipperListView(LoginRequiredMixin, ListView):
     model = Shipper
     template_name = 'wms_app/generic_list.html'
     context_object_name = 'object_list'
@@ -285,7 +333,7 @@ class ShipperListView(ListView):
         })
         return context
 
-class ShipperCreateView(CreateView):
+class ShipperCreateView(LoginRequiredMixin, CreateView):
     model = Shipper
     form_class = ShipperForm
     template_name = 'wms_app/generic_form.html'
@@ -296,7 +344,7 @@ class ShipperCreateView(CreateView):
         context['active_menu'] = 'management'
         return context
 
-class ShipperUpdateView(UpdateView):
+class ShipperUpdateView(LoginRequiredMixin, UpdateView):
     model = Shipper
     form_class = ShipperForm
     template_name = 'wms_app/generic_form.html'
@@ -308,11 +356,11 @@ class ShipperUpdateView(UpdateView):
         context['delete_url_name'] = 'shipper_delete'
         return context
 
-class ShipperDeleteView(DeleteView):
+class ShipperDeleteView(LoginRequiredMixin, DeleteView):
     model = Shipper
     success_url = reverse_lazy('shipper_list')
 
-class CourierListView(ListView):
+class CourierListView(LoginRequiredMixin, ListView):
     model = Courier
     template_name = 'wms_app/generic_list.html'
     context_object_name = 'object_list'
@@ -329,7 +377,7 @@ class CourierListView(ListView):
         })
         return context
 
-class CourierCreateView(CreateView):
+class CourierCreateView(LoginRequiredMixin, CreateView):
     model = Courier
     form_class = CourierForm
     template_name = 'wms_app/generic_form.html'
@@ -340,7 +388,7 @@ class CourierCreateView(CreateView):
         context['active_menu'] = 'management'
         return context
 
-class CourierUpdateView(UpdateView):
+class CourierUpdateView(LoginRequiredMixin, UpdateView):
     model = Courier
     form_class = CourierForm
     template_name = 'wms_app/generic_form.html'
@@ -352,11 +400,11 @@ class CourierUpdateView(UpdateView):
         context['delete_url_name'] = 'courier_delete'
         return context
 
-class CourierDeleteView(DeleteView):
+class CourierDeleteView(LoginRequiredMixin, DeleteView):
     model = Courier
     success_url = reverse_lazy('courier_list')
 
-# --- 화주사별 상품 관리 ---
+@login_required
 def shipper_product_list(request, shipper_pk):
     shipper = get_object_or_404(Shipper, pk=shipper_pk)
     products = Product.objects.filter(shipper=shipper)
@@ -368,6 +416,7 @@ def shipper_product_list(request, shipper_pk):
     }
     return render(request, 'wms_app/shipper_product_list.html', context)
 
+@login_required
 def shipper_product_create(request, shipper_pk):
     shipper = get_object_or_404(Shipper, pk=shipper_pk)
     if request.method == 'POST':
@@ -387,6 +436,7 @@ def shipper_product_create(request, shipper_pk):
     }
     return render(request, 'wms_app/shipper_product_form.html', context)
 
+@login_required
 def shipper_product_update(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
@@ -403,6 +453,7 @@ def shipper_product_update(request, pk):
     }
     return render(request, 'wms_app/shipper_product_form.html', context)
 
+@login_required
 def shipper_product_delete(request, pk):
     product = get_object_or_404(Product, pk=pk)
     shipper_pk = product.shipper.pk
@@ -411,7 +462,7 @@ def shipper_product_delete(request, pk):
         return redirect('shipper_product_list', shipper_pk=shipper_pk)
     return HttpResponseBadRequest("잘못된 요청입니다.")
 
-# --- 컨텍스트 프로세서 ---
+
 def filters(request):
     selected_center_name = request.session.get('selected_center', '')
 

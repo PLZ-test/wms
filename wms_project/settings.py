@@ -17,8 +17,6 @@ ALLOWED_HOSTS = ['192.168.2.116', '192.168.2.121', '192.168.2.127']
 
 # Application definition
 
-# ----------------- [수정] INSTALLED_APPS 설정 -----------------
-# 'wms_app' 대신 새로 만든 앱 설정 클래스의 경로를 적어줍니다.
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -26,9 +24,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'wms_app.apps.WmsAppConfig', # <-- 이 부분을 수정했습니다!
+    'wms_app.apps.WmsAppConfig',
 ]
-# ---------------------------------------------------------
 
 
 MIDDLEWARE = [
@@ -102,3 +99,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Custom User Model 설정
 AUTH_USER_MODEL = 'wms_app.User'
+
+# --- [추가] 로그인/로그아웃 URL 설정 ---
+LOGIN_URL = 'login' # 로그인 페이지의 URL name
+LOGIN_REDIRECT_URL = 'dashboard' # 로그인 성공 후 이동할 페이지의 URL name
+LOGOUT_REDIRECT_URL = 'login' # 로그아웃 성공 후 이동할 페이지의 URL name
