@@ -7,22 +7,26 @@ urlpatterns = [
     path('api/order-chart/', views.order_chart_data, name='order_chart_data'),
     path('api/delivery-chart/', views.delivery_chart_data, name='delivery_chart_data'),
 
-    # Orders (Placeholder pages)
-    path('orders/collect/', views.order_collect, name='order_collect'),
-    path('orders/match/', views.order_match, name='order_match'),
-    path('orders/combine/', views.order_combine, name='order_combine'),
-    path('orders/invoice/', views.order_invoice, name='order_invoice'),
-    path('orders/manage/', views.order_manage, name='order_manage'),
-    
-    # Stock
-    path('stock/manage/', views.stock_manage, name='stock_manage'),
-    path('stock/io/', views.stock_io_view, name='stock_io'),
-    path('stock/<int:pk>/update/', views.stock_update, name='stock_update'),
-    path('stock/history/', views.stock_movement_history, name='stock_history'),
+    # Order
+    path('order/manage/', views.order_manage, name='order_manage'),
 
-    # Settlement (Placeholder pages)
+    # In/Out
+    path('stock/in/', views.stock_in, name='stock_in'),
+    path('stock/out/', views.stock_out, name='stock_out'),
+    path('stock/io/', views.stock_io_view, name='stock_io'),
+    path('stock/history/', views.stock_movement_history, name='stock_history'),
+    
+    # Settlement
     path('settlement/status/', views.settlement_status, name='settlement_status'),
     path('settlement/billing/', views.settlement_billing, name='settlement_billing'),
+    path('settlement/config/', views.settlement_config, name='settlement_config'),
+    
+    # Management
+    path('management/orders/', views.order_manage_new, name='order_manage_new'),
+    path('management/stock/', views.stock_manage, name='stock_manage'),
+    path('management/users/', views.user_manage, name='user_manage'),
+    path('management/shippers/', views.ShipperListView.as_view(), name='shipper_list'),
+    path('stock/<int:pk>/update/', views.stock_update, name='stock_update'),
 
     # Settings - Center
     path('settings/centers/', views.CenterListView.as_view(), name='center_list'),
@@ -31,7 +35,6 @@ urlpatterns = [
     path('settings/centers/<int:pk>/delete/', views.CenterDeleteView.as_view(), name='center_delete'),
 
     # Settings - Shipper
-    path('settings/shippers/', views.ShipperListView.as_view(), name='shipper_list'),
     path('settings/shippers/new/', views.ShipperCreateView.as_view(), name='shipper_create'),
     path('settings/shippers/<int:pk>/edit/', views.ShipperUpdateView.as_view(), name='shipper_update'),
     path('settings/shippers/<int:pk>/delete/', views.ShipperDeleteView.as_view(), name='shipper_delete'),

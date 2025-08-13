@@ -132,12 +132,16 @@ header {
     flex-grow: 1;
 }
 
-.sidebar-menu .main-item-link i {
+/* --- 이 부분이 수정되었습니다 --- */
+/* 아이콘과 텍스트 사이의 간격을 모든 메뉴 항목에 동일하게 적용합니다. */
+.sidebar-menu a > i,
+.sidebar-menu .main-item-link > i {
     margin-right: 15px;
     font-size: 1.2em;
     width: 20px;
     text-align: center;
 }
+/* -------------------------- */
 
 .sidebar-menu .sub-menu {
     max-height: 0;
