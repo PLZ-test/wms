@@ -1,0 +1,32 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | WMS 관리자{% endblock %}
+
+{% block extrastyle %}
+    {# 커스텀 CSS 파일을 불러옵니다. #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/custom_admin.css' %}">
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <i class="fas fa-warehouse"></i> WMS 관리 시스템
+    </a>
+</div>
+{% endblock %}
+
+{% block usertools %}
+{% if has_permission %}
+<div id="user-tools">
+    <i class="fas fa-user"></i> {% firstof user.get_full_name user.get_username %}님 /
+    <form id="logout-form" method="post" action="{% url 'admin:logout' %}">
+        {% csrf_token %}
+        <button type="submit"><i class="fas fa-sign-out-alt"></i> 로그아웃</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

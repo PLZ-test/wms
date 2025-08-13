@@ -12,11 +12,10 @@ SECRET_KEY = 'django-insecure-##################################################
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', '192.168.2.116', '192.168.2.121', '192.168.2.127']
+ALLOWED_HOSTS = ['192.168.2.116', '192.168.2.121', '192.168.2.127']
 
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -26,7 +25,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'wms_app.apps.WmsAppConfig',
 ]
-
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -42,22 +40,26 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'wms_project.urls'
 
+# ----------------- [수정] TEMPLATES 설정 -----------------
+# DIRS에 우리가 만든 templates 폴더 경로를 추가합니다.
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'], # <-- 이 부분을 수정했습니다!
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',  # 이 부분이 추가되었습니다.
+                'django.contrib.messages.context_processors.messages',
                 'wms_app.context_processors.filters',
             ],
         },
     },
 ]
+# ---------------------------------------------------------
+
 
 WSGI_APPLICATION = 'wms_project.wsgi.application'
 
@@ -99,8 +101,3 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Custom User Model 설정
 AUTH_USER_MODEL = 'wms_app.User'
-
-# --- [추가] 로그인/로그아웃 URL 설정 ---
-LOGIN_URL = 'login' # 로그인 페이지의 URL name
-LOGIN_REDIRECT_URL = 'dashboard' # 로그인 성공 후 이동할 페이지의 URL name
-LOGOUT_REDIRECT_URL = 'login' # 로그아웃 성공 후 이동할 페이지의 URL name
