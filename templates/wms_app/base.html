@@ -1,0 +1,79 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }} - WMS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <i class="fas fa-bars hamburger-icon"></i>
+            <h1 class="header-title">WMS</h1>
+            <div class="header-filters">
+                <form id="filter-form" method="get" action="">
+                    <select id="center-filter" name="center_filter" onchange="this.form.submit()">
+                        <option value="">전체 센터</option>
+                        {% for center in centers %}
+                        <option value="{{ center.name }}" {% if center.name == selected_center %}selected{% endif %}>{{ center.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="shipper-filter" name="shipper_filter" onchange="this.form.submit()">
+                        <option value="">전체 화주사</option>
+                        {% for shipper in shippers %}
+                        <option value="{{ shipper.name }}" {% if shipper.name == selected_shipper %}selected{% endif %}>{{ shipper.name }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar">
+        <ul class="sidebar-menu">
+            <li><a href="{% url 'dashboard' %}"><i class="fas fa-chart-line"></i><span>대시보드</span></a></li>
+            <li><a href="{% url 'order_manage' %}"><i class="fas fa-shopping-cart"></i><span>주문</span></a></li>
+            <li class="has-sub-menu">
+                <div class="main-item"><div class="main-item-link"><i class="fas fa-exchange-alt"></i><span>입출고</span></div><i class="fas fa-chevron-right arrow-icon {% if active_menu == 'inout' %}rotated{% endif %}"></i></div>
+                <ul class="sub-menu {% if active_menu == 'inout' %}active{% endif %}">
+                    <li><a href="{% url 'stock_in' %}">입고</a></li>
+                    <li><a href="{% url 'stock_out' %}">출고</a></li>
+                </ul>
+            </li>
+            <li class="has-sub-menu">
+                <div class="main-item"><div class="main-item-link"><i class="fas fa-file-invoice-dollar"></i><span>정산</span></div><i class="fas fa-chevron-right arrow-icon {% if active_menu == 'settlement' %}rotated{% endif %}"></i></div>
+                <ul class="sub-menu {% if active_menu == 'settlement' %}active{% endif %}">
+                    <li><a href="{% url 'settlement_status' %}">현황</a></li>
+                    <li><a href="{% url 'settlement_billing' %}">청구내역</a></li>
+                    <li><a href="{% url 'settlement_config' %}">정산내역설정</a></li>
+                </ul>
+            </li>
+            <li class="has-sub-menu">
+                <div class="main-item"><div class="main-item-link"><i class="fas fa-cog"></i><span>관리</span></div><i class="fas fa-chevron-right arrow-icon {% if active_menu == 'management' %}rotated{% endif %}"></i></div>
+                <ul class="sub-menu {% if active_menu == 'management' %}active{% endif %}">
+                    <li><a href="{% url 'order_manage_new' %}">주문관리</a></li>
+                    <li><a href="{% url 'stock_manage' %}">재고관리</a></li>
+                    <li><a href="{% url 'user_manage' %}">사용자관리</a></li>
+                    <li><a href="{% url 'shipper_list' %}">화주사관리</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <div class="main-content">
+        <div id="page-content">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="{% static 'js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

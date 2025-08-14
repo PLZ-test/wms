@@ -1,0 +1,35 @@
+{% extends 'wms_app/base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+</div>
+<div class="form-container">
+    <div class="form-group">
+        <label>상품명:</label>
+        <input type="text" value="{{ product.name }}" class="form-control" readonly>
+    </div>
+    <div class="form-group">
+         <label>화주사:</label>
+        <input type="text" value="{{ product.shipper.name }}" class="form-control" readonly>
+    </div>
+
+    <form id="main-form" method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="{{ form.quantity.id_for_label }}">{{ form.quantity.label }}:</label>
+            {{ form.quantity }}
+        </div>
+        {% if form.quantity.errors %}
+        <div class="error-list" style="padding-left: 115px; color: var(--danger-color);">
+            {{ form.quantity.errors }}
+        </div>
+        {% endif %}
+    </form>
+
+    <div class="form-actions" style="padding-left: 0;">
+        <a href="{% url 'stock_manage' %}" class="btn btn-secondary">취소</a>
+        <button type="submit" class="btn btn-primary" form="main-form">수정</button>
+    </div>
+</div>
+{% endblock %}
