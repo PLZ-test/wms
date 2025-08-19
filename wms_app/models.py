@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 
 class Center(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name='센터명')
@@ -37,6 +37,25 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=RoleChoices.choices, default=RoleChoices.UNASSIGNED, verbose_name='사용자 역할')
     center = models.ForeignKey(Center, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='소속 센터')
     shipper = models.ForeignKey(Shipper, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='소속 화주사')
+    
+    # --- [수정] related_name 충돌 방지를 위한 필드 추가 ---
+    groups = models.ManyToManyField(
+        'auth.Group',
+        verbose_name='groups',
+        blank=True,
+        help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
+        related_name='wms_app_user_groups',
+        related_query_name='wms_app_user',
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        verbose_name='user permissions',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        related_name='wms_app_user_permissions',
+        related_query_name='wms_app_user',
+    )
+    # ---------------------------------------------------
 
     class Meta:
         verbose_name = '사용자'

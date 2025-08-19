@@ -12,7 +12,7 @@ SECRET_KEY = 'django-insecure-##################################################
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.2.116', '192.168.2.121', '192.168.2.127']
+['192.168.2.116', '192.168.2.121', '192.168.2.127', '127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -96,8 +96,8 @@ STATICFILES_DIRS = [
 ]
 
 
-# Default primary key field type
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# 로그인 페이지 URL을 명시적으로 지정
+LOGIN_URL = 'login'
 
-# Custom User Model 설정
-AUTH_USER_MODEL = 'wms_app.User'
+# 로그인 성공 후 이동할 URL (대시보드 페이지)
+LOGIN_REDIRECT_URL = 'dashboard'

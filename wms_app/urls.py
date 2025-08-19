@@ -1,14 +1,10 @@
 from django.urls import path
 from . import views
-from django.contrib.auth import views as auth_views
+# from django.contrib.auth import views as auth_views # 인증 뷰는 더 이상 필요하지 않습니다.
 
 urlpatterns = [
-    # --- [추가] 인증 관련 URL ---
-    path('login/', views.CustomLoginView.as_view(), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
-    path('signup/', views.signup_view, name='signup'),
-    path('signup/done/', views.signup_done_view, name='signup_done'),
-
+    # 기존 인증 관련 URL 패턴이 삭제되었습니다.
+    
     # Dashboard
     path('', views.dashboard, name='dashboard'),
     path('api/order-chart/', views.order_chart_data, name='order_chart_data'),

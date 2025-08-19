@@ -34,6 +34,14 @@
                 </form>
             </div>
         </div>
+        <div class="header-right">
+            {% if user.is_authenticated %}
+            <form method="post" action="{% url 'logout' %}" style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary btn-logout">로그아웃</button>
+            </form>
+            {% endif %}
+        </div>
     </header>
 
     <nav class="sidebar">

@@ -6,8 +6,8 @@ from django.db.models import Sum, F, Count
 from datetime import datetime
 from django.db import transaction
 
-# --- [수정] 인증 관련 모듈 import ---
-from django.contrib.auth import login
+# --- [수정] 인증 관련 모듈 import (logout 함수 추가) ---
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView
@@ -16,6 +16,15 @@ from django.contrib import messages
 from .models import Center, Shipper, Courier, Product, Order, StockMovement, User
 # --- [수정] CustomUserCreationForm 추가 ---
 from .forms import CenterForm, ShipperForm, CourierForm, ProductForm, StockIOForm, StockUpdateForm, UserUpdateForm, CustomUserCreationForm
+
+
+# --- [추가] WMS 전용 로그아웃 뷰 ---
+def wms_logout_view(request):
+    """
+    사용자를 로그아웃 처리하고 WMS 로그인 페이지로 즉시 리디렉션합니다.
+    """
+    logout(request)
+    return redirect('login')
 
 
 # --- [추가] 인증(로그인, 회원가입) 관련 뷰 ---
