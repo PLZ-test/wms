@@ -12,7 +12,7 @@ SECRET_KEY = 'django-insecure-##################################################
 
 DEBUG = True
 
-['192.168.2.116', '192.168.2.121', '192.168.2.127', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['192.168.2.116', '192.168.2.121', '192.168.2.127', '127.0.0.1', 'localhost', '192.168.2.132']
 
 
 # Application definition
@@ -101,3 +101,6 @@ LOGIN_URL = 'login'
 
 # 로그인 성공 후 이동할 URL (대시보드 페이지)
 LOGIN_REDIRECT_URL = 'dashboard'
+
+# Custom User Model 설정
+AUTH_USER_MODEL = 'wms_app.User'
