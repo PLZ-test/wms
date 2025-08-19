@@ -1,0 +1,133 @@
+/* 기본 폰트 및 색상 설정 */
+:root {
+    --primary: #ef831e;
+    --primary-dark: #233140;
+    --secondary: #3498db;
+    --light-gray: #f5f7fa;
+    --text-color: #333;
+    --border-color: #e4e7ea;
+}
+
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--light-gray);
+    color: var(--text-color);
+}
+
+a { color: var(--secondary); }
+a:hover { color: var(--primary); }
+
+/* 헤더 */
+#header {
+    background: var(--primary);
+    color: white;
+    height: auto;
+    padding: 10px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+#header a:link, #header a:visited { color: white; }
+#branding { flex-shrink: 0; }
+#site-name { font-size: 24px; font-weight: 600; }
+#site-name i { margin-right: 10px; }
+
+/* 사용자 도구 (로그아웃 버튼) */
+#user-tools {
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+#user-tools form { margin: 0; }
+#user-tools button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1em;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+}
+#user-tools button:hover { text-decoration: underline; }
+
+/* 메인 콘텐츠 영역 */
+.main { padding: 20px 40px; }
+
+/* 모듈 제목 */
+.module h2, .module caption, .inline-group h2 {
+    background: #ffffff;
+    border-bottom: 2px solid var(--border-color);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* 버튼 스타일 */
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+    background: var(--secondary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.button:hover, input[type=submit]:hover, input[type=button]:hover {
+    background: #2980b9;
+}
+.button.default, input[type=submit].default {
+    background: var(--primary);
+}
+.button.default:hover, input[type=submit].default:hover {
+    background: var(--primary-dark);
+}
+a.button { padding: 10px 15px; }
+
+/* 테이블 (목록 페이지) */
+.results table {
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    overflow: hidden;
+}
+.results th {
+    background: #f8f9fa !important;
+    color: #333 !important;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color) !important;
+}
+.results tr:nth-child(even) { background-color: #fdfdfd; }
+
+/* 로그인 페이지 */
+.login #container {
+    background: var(--light-gray);
+    border: none;
+    min-width: 100%;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.login #content-main {
+    background: white;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    width: 400px;
+}
+.login #login-form .form-row { margin-bottom: 20px; }
+.login #login-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+}
+.login #login-form input[type=text],
+.login #login-form input[type=password] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+.login .submit-row { padding: 0; }
+.login .submit-row .button { width: 100%; padding: 12px; }
