@@ -3,9 +3,8 @@
 {% comment %}
 wms/templates/wms_app/dashboard.html
 - [수정 사항]
-- 1. 메뉴 그리드의 전체 너비를 80%로 늘렸습니다.
-- 2. 각 카드의 높이가 커지도록 그래프 영역의 높이를 늘리고, 제목 글자 크기를 키웠습니다.
-- 3. 전체적인 세로 여백을 조정하여 꽉 찬 느낌을 주도록 했습니다.
+- 1. 각 메뉴 카드의 세로 크기를 키우기 위해 내부 여백(padding)을 늘렸습니다.
+- 2. 그래프 영역(graph-placeholder)의 높이를 더 크게 조정했습니다.
 {% endcomment %}
 
 {% block extra_head %}
@@ -16,8 +15,8 @@ wms/templates/wms_app/dashboard.html
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 5vh 20px; /* 상하 여백을 viewport height 기준으로 조정 */
-        min-height: calc(100vh - var(--header-height) - 40px); /* 헤더 높이를 제외한 최소 높이 지정 */
+        padding: 5vh 20px;
+        min-height: calc(100vh - var(--header-height) - 40px);
         box-sizing: border-box;
     }
 
@@ -25,12 +24,9 @@ wms/templates/wms_app/dashboard.html
     .home-menu-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 30px; /* 카드 사이 간격을 넓힘 */
-        
-        /* --- [수정] 전체 메뉴의 너비를 80%로 늘립니다. --- */
+        gap: 30px;
         width: 80%;
         max-width: 1400px;
-        /* ------------------------------------------- */
     }
 
     /* 각 메뉴 카드를 <a> 태그로 만들어 클릭 가능하게 함 */
@@ -38,7 +34,9 @@ wms/templates/wms_app/dashboard.html
         background-color: #ffffff;
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-        padding: 24px; /* 내부 여백을 늘림 */
+        /* --- [수정] 카드 내부의 상하좌우 여백을 늘립니다. --- */
+        padding: 30px;
+        /* ------------------------------------------- */
         transition: transform 0.2s, box-shadow 0.2s;
         display: block;
         text-decoration: none;
@@ -51,7 +49,7 @@ wms/templates/wms_app/dashboard.html
 
     /* --- [수정] 그래프 미리보기 영역의 높이를 늘립니다. --- */
     .graph-placeholder {
-        height: 180px;
+        height: 220px;
         background-color: #f3f4f6;
         border-radius: 6px;
         display: flex;
@@ -63,14 +61,13 @@ wms/templates/wms_app/dashboard.html
     }
     /* ----------------------------------------------- */
 
-    /* --- [수정] 주 메뉴 제목의 글자 크기를 키웁니다. --- */
+    /* 주 메뉴 제목 스타일 */
     .menu-card h2 {
         font-size: 1.8em;
         font-weight: bold;
         color: #333;
         margin: 0;
     }
-    /* ------------------------------------------- */
     .menu-card h2 i {
         margin-right: 12px;
     }
@@ -90,7 +87,7 @@ wms/templates/wms_app/dashboard.html
 {% endblock %}
 
 {% block content %}
-<div class="page-header" style="display: none;"> {# 제목이 중복되므로 숨김 처리 #}
+<div class.page-header" style="display: none;">
     <h1>홈</h1>
 </div>
 

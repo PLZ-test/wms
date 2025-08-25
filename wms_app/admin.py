@@ -1,14 +1,14 @@
+# wms_app/admin.py
+
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Center, Shipper, Courier, Product, StockMovement, Order
+# --- [수정] SalesChannel과 OrderItem 모델을 import합니다. ---
+from .models import User, Center, Shipper, Courier, Product, StockMovement, Order, SalesChannel, OrderItem
 
-# --- [추가] Admin 로그아웃 경로를 분리하기 위한 사용자 정의 AdminSite 클래스 ---
 from django.urls import path
 from django.contrib.auth import views as auth_views
 
 class WMSAdminSite(admin.AdminSite):
-    # 관리자 페이지의 로그아웃 URL을 오버라이딩합니다.
-    # 로그아웃 후 'admin:login' 페이지로 리디렉션되게 합니다.
     def get_urls(self):
         urls = super().get_urls()
         urls.insert(0, path('logout/', auth_views.LogoutView.as_view(next_page='admin:login'), name='logout'))
@@ -23,17 +23,34 @@ class CustomUserAdmin(UserAdmin):
     add_fieldsets = UserAdmin.add_fieldsets + (
         ('역할 및 소속 정보', {'fields': ('role', 'center', 'shipper')}),
     )
-    # --- [수정] list_display와 list_filter에 'is_active' 추가 ---
     list_display = ('username', 'email', 'role', 'center', 'shipper', 'is_staff', 'is_active')
     list_filter = ('role', 'is_active', 'center', 'shipper', 'is_staff', 'is_superuser', 'groups')
     search_fields = ('username', 'first_name', 'last_name', 'email')
     ordering = ('username',)
 
-# --- [수정] admin.site 대신 wms_admin_site에 모델을 등록합니다. ---
+# --- [신규] OrderAdmin 설정 ---
+# OrderItem을 Order 상세 페이지에서 함께 관리할 수 있도록 인라인으로 설정합니다.
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 1  # 기본으로 보여줄 빈 아이템 폼의 수
+
+class OrderAdmin(admin.ModelAdmin):
+    # Order 상세 페이지에 OrderItem 인라인을 포함시킵니다.
+    inlines = [OrderItemInline]
+    list_display = ('order_no', 'shipper', 'channel', 'recipient_name', 'order_status', 'created_at')
+    list_filter = ('order_status', 'shipper', 'channel')
+    search_fields = ('order_no', 'recipient_name')
+# -----------------------------
+
+# --- wms_admin_site에 모델을 등록합니다. ---
 wms_admin_site.register(User, CustomUserAdmin)
 wms_admin_site.register(Center)
 wms_admin_site.register(Shipper)
 wms_admin_site.register(Courier)
 wms_admin_site.register(Product)
 wms_admin_site.register(StockMovement)
-wms_admin_site.register(Order)
+
+# --- [수정] Order를 새로운 OrderAdmin과 함께 등록하고, SalesChannel도 등록합니다. ---
+wms_admin_site.register(Order, OrderAdmin)
+wms_admin_site.register(SalesChannel)
+# -------------------------------------------------------------------------

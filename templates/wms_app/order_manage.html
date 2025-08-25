@@ -1,0 +1,245 @@
+{% extends 'wms_app/base.html' %}
+
+{% comment %}
+wms/templates/wms_app/order_manage.html
+- [수정] JavaScript 부분을 추가하여 API를 통해 실제 주문 데이터를 불러와 표시하도록 구현했습니다.
+{% endcomment %}
+
+{% block extra_head %}
+<style>
+    /* (기존 스타일 코드는 변경사항 없음) */
+    .order-manage-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+        padding: 20px 0;
+    }
+    .top-stat-card {
+        background-color: #fff;
+        padding: 24px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        width: 80%;
+        max-width: 1200px;
+    }
+    .top-stat-card h3 {
+        margin: 0 0 16px 0;
+        font-size: 1.2em;
+        color: #333;
+    }
+    .graph-placeholder-large {
+        height: 200px;
+        background-color: #f3f4f6;
+        border-radius: 6px;
+    }
+    .status-grid {
+        display: flex;
+        gap: 30px;
+        width: 80%;
+        max-width: 1200px;
+        align-items: stretch;
+    }
+    .status-card {
+        background-color: #fff;
+        padding: 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        text-align: center;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    .status-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+    .status-card.active {
+        border-color: var(--accent-color);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .status-card h4 {
+        margin: 0 0 15px 0;
+        font-size: 1.5em;
+        color: #333;
+    }
+    .graphic-placeholder-small {
+        height: 120px;
+        background-color: #f3f4f6;
+        border-radius: 6px;
+    }
+    .auto-toggle-container { display: flex; align-items: center; gap: 10px; }
+    .auto-toggle-label { font-weight: bold; font-size: 1.1em; color: #555; }
+    .toggle-switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--accent-color); }
+    input:checked + .slider:before { transform: translateX(26px); }
+
+    /* --- [신규] 주문 목록 테이블 스타일 --- */
+    .order-list-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    .order-list-table th, .order-list-table td {
+        border-bottom: 1px solid #dee2e6;
+        padding: 12px 8px;
+        text-align: left;
+    }
+    .order-list-table th {
+        font-weight: bold;
+        background-color: #f8f9fa;
+    }
+    .error-reason {
+        color: var(--danger-color);
+        font-size: 0.9em;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>주문 관리</h1>
+    <div class="btn-group">
+        <button class="btn btn-primary">엑셀 주문 등록</button>
+        <div class="auto-toggle-container">
+            <span class="auto-toggle-label">AUTO</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="auto-process-toggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+</div>
+
+<div class="order-manage-container">
+    <section class="top-stat-card">
+        <h3>채널별 주문량</h3>
+        <div class="graph-placeholder-large"></div>
+    </section>
+
+    <section class="status-grid">
+        <div class="status-card active" data-tab="success">
+            <h4>성공 <span id="success-count">(0건)</span></h4>
+            <div class="graphic-placeholder-small"></div>
+        </div>
+        <div class="status-card" data-tab="error">
+            <h4>오류 <span id="error-count">(0건)</span></h4>
+            <div class="graphic-placeholder-small"></div>
+        </div>
+    </section>
+
+    <section class="list-section">
+        <div id="tab-success" class="list-pane active">
+            </div>
+        <div id="tab-error" class="list-pane">
+            </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- 1. 필요한 HTML 요소 가져오기 ---
+    const statusCards = document.querySelectorAll('.status-card');
+    const successPane = document.getElementById('tab-success');
+    const errorPane = document.getElementById('tab-error');
+    const successCountEl = document.getElementById('success-count');
+    const errorCountEl = document.getElementById('error-count');
+
+    // --- 2. 주문 목록을 불러와서 화면에 그리는 함수 ---
+    function loadOrders(status) {
+        const targetPane = status === 'success' ? successPane : errorPane;
+        targetPane.innerHTML = '<p>목록을 불러오는 중...</p>'; // 로딩 메시지 표시
+
+        // 백엔드 API 호출
+        fetch(`/api/orders/?status=${status}`)
+            .then(response => response.json())
+            .then(data => {
+                const orders = data.orders;
+                
+                // 해당 탭의 주문 건수 업데이트
+                if (status === 'success') {
+                    successCountEl.textContent = `(${orders.length}건)`;
+                } else {
+                    errorCountEl.textContent = `(${orders.length}건)`;
+                }
+                
+                // 주문이 없을 경우 메시지 표시
+                if (orders.length === 0) {
+                    targetPane.innerHTML = `<p>해당하는 주문이 없습니다.</p>`;
+                    return;
+                }
+
+                // 주문 목록을 표시할 테이블 HTML 생성
+                let tableHTML = `
+                    <table class="order-list-table">
+                        <thead>
+                            <tr>
+                                <th>주문번호</th>
+                                <th>화주사</th>
+                                <th>채널</th>
+                                <th>수취인</th>
+                                <th>상태</th>
+                                ${status === 'error' ? '<th>오류 원인</th>' : ''}
+                                <th>작업</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                orders.forEach(order => {
+                    tableHTML += `
+                        <tr>
+                            <td>${order.order_no}</td>
+                            <td>${order.shipper}</td>
+                            <td>${order.channel}</td>
+                            <td>${order.recipient}</td>
+                            <td>${order.status}</td>
+                            ${status === 'error' ? `<td class="error-reason">${order.error_message || '-'}</td>` : ''}
+                            <td>
+                                <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;">상세</button>
+                                ${status === 'error' ? `<button class="btn btn-primary" style="padding: 5px 10px; font-size: 12px; margin-left: 5px;">수정</button>` : ''}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tableHTML += '</tbody></table>';
+                targetPane.innerHTML = tableHTML;
+            })
+            .catch(error => {
+                console.error('Error fetching orders:', error);
+                targetPane.innerHTML = `<p style="color:red;">목록을 불러오는 중 오류가 발생했습니다.</p>`;
+            });
+    }
+
+    // --- 3. 탭 클릭 이벤트 처리 ---
+    statusCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const tabId = card.dataset.tab;
+
+            // UI 업데이트
+            statusCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            
+            document.querySelectorAll('.list-pane').forEach(p => p.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            // 해당 탭의 주문 목록 불러오기
+            loadOrders(tabId);
+        });
+    });
+
+    // --- 4. 페이지가 처음 로드될 때 기본 탭(성공)의 목록을 불러옴 ---
+    loadOrders('success');
+});
+</script>
+{% endblock %}

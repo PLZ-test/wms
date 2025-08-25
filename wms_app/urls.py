@@ -1,9 +1,17 @@
+# wms_app/urls.py
+
 from django.urls import path
 from . import views
-# from django.contrib.auth import views as auth_views # 인증 뷰는 더 이상 필요하지 않습니다.
 
 urlpatterns = [
-    # 기존 인증 관련 URL 패턴이 삭제되었습니다.
+    # --- [추가] 주문 목록 조회를 위한 API URL ---
+    # JavaScript가 이 주소로 요청을 보내 '성공' 또는 '오류' 목록을 받아옵니다.
+    path('api/orders/', views.order_list_api, name='order_list_api'),
+    # -----------------------------------------
+
+    # --- [추가] 아이디 중복 확인 API를 위한 URL ---
+    path('api/check-username/', views.check_username, name='check_username'),
+    # ---------------------------------------------
     
     # Dashboard
     path('', views.dashboard, name='dashboard'),
