@@ -1,3 +1,10 @@
+{% comment %}
+wms/wms_app/templates/registration/login.html
+
+WMS 시스템의 메인 로그인 페이지입니다.
+이 파일이 실제로 사용자에게 보여지는 템플릿입니다.
+{% endcomment %}
+
 {% load static %}
 <!DOCTYPE html>
 <html lang="ko">
@@ -5,7 +12,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>로그인 - WMS</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/wms/style.css' %}">
 </head>
 <body>
     <div class="auth-container">
@@ -18,7 +25,6 @@
 
             {% if messages %}
                 {% for message in messages %}
-                    {# message.tags에 error, success 등이 자동으로 포함됩니다. #}
                     <p class="message {{ message.tags }}"> 
                         {{ message }}
                     </p>
@@ -37,9 +43,13 @@
                 </div>
                 <button type="submit" class="btn btn-primary btn-block">로그인</button>
             </form>
+            
+            {# --- [수정] '비밀번호 찾기' 링크 추가 --- #}
             <div class="auth-links">
+                <a href="{% url 'password_reset' %}">비밀번호 찾기</a> | 
                 <a href="{% url 'signup' %}">회원가입</a>
             </div>
+            {# ------------------------------------ #}
         </div>
     </div>
 </body>
