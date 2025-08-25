@@ -1,8 +1,10 @@
+/* static/css/wms/style.css */
+
 :root {
-    --sidebar-width: 250px;
+    /* --- [삭제] 사이드바 너비 변수를 삭제했습니다. --- */
     --header-height: 60px;
     --main-bg-color: #f4f7f6;
-    --sidebar-bg-color: #34495e;
+    --sidebar-bg-color: #34495e; /* (이 변수는 현재 사용되지 않음) */
     --font-color: #ecf0f1;
     --accent-color: #1abc9c;
     --danger-color: #e74c3c;
@@ -40,7 +42,7 @@ header {
     padding: 0 20px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     z-index: 1001;
-    justify-content: space-between;
+    justify-content: space-between; /* justify-content를 space-between으로 변경하여 오른쪽 요소를 끝으로 보냅니다. */
     gap: 20px;
 }
 
@@ -56,11 +58,7 @@ header {
     gap: 15px;
 }
 
-.hamburger-icon {
-    font-size: 24px;
-    cursor: pointer;
-    color: #333;
-}
+/* --- [삭제] .hamburger-icon 관련 스타일을 삭제했습니다. --- */
 
 .header-title {
     font-size: 24px;
@@ -82,93 +80,17 @@ header {
     background-color: #fff;
 }
 
-.sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: var(--sidebar-width);
-    height: 100%;
-    background-color: var(--sidebar-bg-color);
-    color: var(--font-color);
-    padding-top: var(--header-height);
-    transition: transform 0.3s ease;
-    z-index: 1000;
-    overflow-y: auto;
-}
+/* --- [삭제] .sidebar 및 하위 메뉴(.sidebar-menu 등) 관련 스타일 전체를 삭제했습니다. --- */
 
-.sidebar.collapsed {
-    transform: translateX(-100%);
-}
-
+/* --- [수정] 메인 콘텐츠 영역이 전체 너비를 사용하도록 수정 --- */
 .main-content {
     flex-grow: 1;
-    margin-left: var(--sidebar-width);
+    margin-left: 0; /* 왼쪽 마진을 0으로 변경 */
     padding: calc(var(--header-height) + 20px) 20px 20px;
-    width: calc(100% - var(--sidebar-width));
-    transition: margin-left 0.3s ease, width 0.3s ease;
+    width: 100%;   /* 너비를 100%로 변경 */
 }
+/* --- [삭제] .main-content.collapsed 관련 스타일을 삭제했습니다. --- */
 
-.main-content.collapsed {
-    margin-left: 0;
-    width: 100%;
-}
-
-.sidebar-menu a,
-.sidebar-menu .main-item-link {
-    display: flex;
-    align-items: center;
-    padding: 15px 20px;
-    color: var(--font-color);
-    transition: background-color 0.2s;
-}
-
-.sidebar-menu a:hover,
-.sidebar-menu .main-item-link:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.sidebar-menu .main-item {
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.sidebar-menu .main-item-link {
-    flex-grow: 1;
-}
-
-.sidebar-menu a > i,
-.sidebar-menu .main-item-link > i {
-    margin-right: 15px;
-    font-size: 1.2em;
-    width: 20px;
-    text-align: center;
-}
-
-.sidebar-menu .sub-menu {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease-in-out;
-    background-color: rgba(0, 0, 0, 0.2);
-}
-
-.sidebar-menu .sub-menu.active {
-    max-height: 500px;
-}
-
-.sidebar-menu .sub-menu a {
-    padding-left: 55px;
-}
-
-.sidebar-menu .arrow-icon {
-    margin-right: 20px;
-    transition: transform 0.3s ease;
-}
-
-.sidebar-menu .arrow-icon.rotated {
-    transform: rotate(90deg);
-}
 
 .page-header {
     display: flex;
@@ -177,6 +99,7 @@ header {
     margin-bottom: 20px;
 }
 
+/* (이하 다른 스타일은 기존과 동일) */
 .page-header .btn-group {
     display: flex;
     gap: 10px;
@@ -237,6 +160,7 @@ header {
     max-width: 700px;
     margin: 20px auto;
 }
+
 
 .form-container form {
     display: flex;

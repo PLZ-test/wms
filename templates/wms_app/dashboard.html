@@ -1,95 +1,122 @@
 {% extends 'wms_app/base.html' %}
 
-{% block content %}
-<div class="page-header"><h1>{{ page_title }}</h1></div>
-<p>현재 필터: <strong>{{ selected_center|default:'전체 센터' }}</strong>, <strong>{{ selected_shipper|default:'전체 화주사' }}</strong></p>
-<div class="dashboard-container">
-    <div class="dashboard-item">
-        <div class="form-container">
-            <div class="date-filter-container">
-                <label for="order-date-picker">주문날짜 선택:</label>
-                <input type="text" id="order-date-picker" class="date-range-picker" readonly>
-            </div>
-            <h2 style="border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 20px;">주문 현황</h2>
-            <div style="width: 100%; max-width: 400px; margin: 20px auto;">
-                <canvas id="orderStatusChart"></canvas>
-            </div>
-        </div>
-    </div>
-    <div class="dashboard-item">
-        <div class="form-container">
-            <div class="date-filter-container">
-                <label for="delivery-date-picker">배송날짜 선택:</label>
-                <input type="text" id="delivery-date-picker" class="date-range-picker" readonly>
-            </div>
-            <h2 style="border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 20px;">배송 현황</h2>
-            <div style="width: 100%; max-width: 400px; margin: 20px auto; height: 120px;">
-                <canvas id="deliveryStatusChart"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
+{% comment %}
+wms/templates/wms_app/dashboard.html
+- [수정 사항]
+- 1. 메뉴 그리드의 전체 너비를 80%로 늘렸습니다.
+- 2. 각 카드의 높이가 커지도록 그래프 영역의 높이를 늘리고, 제목 글자 크기를 키웠습니다.
+- 3. 전체적인 세로 여백을 조정하여 꽉 찬 느낌을 주도록 했습니다.
+{% endcomment %}
+
+{% block extra_head %}
+{# 이 페이지에서만 사용하는 스타일을 정의합니다. #}
+<style>
+    /* 메뉴 전체를 감싸고 중앙 정렬을 위한 컨테이너 */
+    .home-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 5vh 20px; /* 상하 여백을 viewport height 기준으로 조정 */
+        min-height: calc(100vh - var(--header-height) - 40px); /* 헤더 높이를 제외한 최소 높이 지정 */
+        box-sizing: border-box;
+    }
+
+    /* 메뉴 카드들을 담는 그리드 컨테이너 설정 */
+    .home-menu-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px; /* 카드 사이 간격을 넓힘 */
+        
+        /* --- [수정] 전체 메뉴의 너비를 80%로 늘립니다. --- */
+        width: 80%;
+        max-width: 1400px;
+        /* ------------------------------------------- */
+    }
+
+    /* 각 메뉴 카드를 <a> 태그로 만들어 클릭 가능하게 함 */
+    .menu-card {
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        padding: 24px; /* 내부 여백을 늘림 */
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: block;
+        text-decoration: none;
+        color: inherit;
+    }
+    .menu-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+
+    /* --- [수정] 그래프 미리보기 영역의 높이를 늘립니다. --- */
+    .graph-placeholder {
+        height: 180px;
+        background-color: #f3f4f6;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+        font-size: 1em;
+        margin-bottom: 20px;
+    }
+    /* ----------------------------------------------- */
+
+    /* --- [수정] 주 메뉴 제목의 글자 크기를 키웁니다. --- */
+    .menu-card h2 {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #333;
+        margin: 0;
+    }
+    /* ------------------------------------------- */
+    .menu-card h2 i {
+        margin-right: 12px;
+    }
+    
+    /* 화면이 작아지면 1열로 변경 */
+    @media (max-width: 768px) {
+        .home-menu-grid {
+            grid-template-columns: 1fr;
+            width: 90%;
+            gap: 20px;
+        }
+        .home-container {
+            padding: 20px 10px;
+        }
+    }
+</style>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-// Dashboard-specific JavaScript
-document.addEventListener('DOMContentLoaded', () => {
-    let orderChartInstance = null;
-    let deliveryChartInstance = null;
+{% block content %}
+<div class="page-header" style="display: none;"> {# 제목이 중복되므로 숨김 처리 #}
+    <h1>홈</h1>
+</div>
 
-    function updateOrderStatusChart(startDate, endDate) {
-        fetch(`/api/order-chart/?start=${startDate}&end=${endDate}`)
-            .then(response => response.json())
-            .then(data => {
-                const chartData = {
-                    labels: data.labels,
-                    datasets: [{
-                        label: '주문 건수',
-                        data: data.data,
-                        backgroundColor: ['#3498db', '#1abc9c', '#e74c3c'],
-                        borderColor: '#fff',
-                        borderWidth: 2
-                    }]
-                };
-                const ctx = document.getElementById('orderStatusChart')?.getContext('2d');
-                if (!ctx) return;
-                if (orderChartInstance) orderChartInstance.destroy();
-                orderChartInstance = new Chart(ctx, {
-                    type: 'pie', data: chartData,
-                    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
-                });
-            });
-    }
+<div class="home-container">
+    <div class="home-menu-grid">
+        
+        <a href="{% url 'order_manage' %}" class="menu-card">
+            <h2><i class="fas fa-shopping-cart"></i>주문</h2>
+            <div class="graph-placeholder">(주문 현황 그래프 영역)</div>
+        </a>
 
-    function updateDeliveryStatusChart(startDate, endDate) {
-        fetch(`/api/delivery-chart/?start=${startDate}&end=${endDate}`)
-            .then(response => response.json())
-            .then(data => {
-                const chartData = {
-                    labels: [''], 
-                    datasets: [
-                        { label: '집하완료', data: [data['집하완료']], backgroundColor: '#f39c12' },
-                        { label: '배송중', data: [data['배송중']], backgroundColor: '#3498db' },
-                        { label: '배송완료', data: [data['배송완료']], backgroundColor: '#2ecc71' }
-                    ]
-                };
-                const ctx = document.getElementById('deliveryStatusChart')?.getContext('2d');
-                if (!ctx) return;
-                if (deliveryChartInstance) deliveryChartInstance.destroy();
-                deliveryChartInstance = new Chart(ctx, {
-                    type: 'bar', data: chartData,
-                    options: {
-                        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                        plugins: { legend: { display: true, position: 'bottom' } },
-                        scales: { x: { stacked: true, display: false }, y: { stacked: true, display: false } }
-                    }
-                });
-            });
-    }
+        <a href="{% url 'stock_io' %}" class="menu-card">
+            <h2><i class="fas fa-exchange-alt"></i>입출고</h2>
+            <div class="graph-placeholder">(일일 입출고량 그래프 영역)</div>
+        </a>
 
-    initDatePicker('order-date-picker', updateOrderStatusChart);
-    initDatePicker('delivery-date-picker', updateDeliveryStatusChart);
-});
-</script>
+        <a href="{% url 'settlement_status' %}" class="menu-card">
+            <h2><i class="fas fa-file-invoice-dollar"></i>정산</h2>
+            <div class="graph-placeholder">(월별 정산금액 그래프 영역)</div>
+        </a>
+
+        <a href="{% url 'stock_manage' %}" class="menu-card">
+            <h2><i class="fas fa-cog"></i>관리</h2>
+            <div class="graph-placeholder">(재고 현황 파이차트 영역)</div>
+        </a>
+
+    </div>
+</div>
 {% endblock %}

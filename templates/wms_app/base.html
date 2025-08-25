@@ -1,8 +1,7 @@
 {% comment %}
 wms/templates/wms_app/base.html
-
-WMS 시스템의 모든 페이지가 상속받는 기본 템플릿입니다.
-이 파일에 favicon 링크를 추가하면 모든 페이지에 아이콘이 적용됩니다.
+- 이 파일은 WMS 시스템의 모든 페이지가 상속받는 기본 템플릿입니다.
+- 올바른 CSS 파일 경로를 다시 연결하여 디자인이 적용되도록 수정했습니다.
 {% endcomment %}
 
 {% load static %}
@@ -12,22 +11,23 @@ WMS 시스템의 모든 페이지가 상속받는 기본 템플릿입니다.
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ page_title }} - WMS</title>
-    
-    {# --- [추가] 브라우저 탭에 표시될 파비콘(favicon) 링크 --- #}
     <link rel="icon" href="{% static 'favicon.ico' %}">
-    {# ---------------------------------------------------- #}
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
+    
+    {# --- [수정] 올바른 CSS 파일 경로 --- #}
     <link rel="stylesheet" href="{% static 'css/wms/style.css' %}">
+    {# ------------------------------- #}
+
+    {# 자식 템플릿에서 추가적인 head 내용을 삽입할 수 있는 공간 #}
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
     <header>
         <div class="header-left">
-            <i class="fas fa-bars hamburger-icon"></i>
             <h1 class="header-title">WMS</h1>
             <div class="header-filters">
                 <form id="filter-form" method="get" action="">
@@ -55,37 +55,6 @@ WMS 시스템의 모든 페이지가 상속받는 기본 템플릿입니다.
             {% endif %}
         </div>
     </header>
-
-    <nav class="sidebar">
-        <ul class="sidebar-menu">
-            <li><a href="{% url 'dashboard' %}"><i class="fas fa-chart-line"></i><span>대시보드</span></a></li>
-            <li><a href="{% url 'order_manage' %}"><i class="fas fa-shopping-cart"></i><span>주문</span></a></li>
-            <li class="has-sub-menu">
-                <div class="main-item"><div class="main-item-link"><i class="fas fa-exchange-alt"></i><span>입출고</span></div><i class="fas fa-chevron-right arrow-icon {% if active_menu == 'inout' %}rotated{% endif %}"></i></div>
-                <ul class="sub-menu {% if active_menu == 'inout' %}active{% endif %}">
-                    <li><a href="{% url 'stock_in' %}">입고</a></li>
-                    <li><a href="{% url 'stock_out' %}">출고</a></li>
-                </ul>
-            </li>
-            <li class="has-sub-menu">
-                <div class="main-item"><div class="main-item-link"><i class="fas fa-file-invoice-dollar"></i><span>정산</span></div><i class="fas fa-chevron-right arrow-icon {% if active_menu == 'settlement' %}rotated{% endif %}"></i></div>
-                <ul class="sub-menu {% if active_menu == 'settlement' %}active{% endif %}">
-                    <li><a href="{% url 'settlement_status' %}">현황</a></li>
-                    <li><a href="{% url 'settlement_billing' %}">청구내역</a></li>
-                    <li><a href="{% url 'settlement_config' %}">정산내역설정</a></li>
-                </ul>
-            </li>
-            <li class="has-sub-menu">
-                <div class="main-item"><div class="main-item-link"><i class="fas fa-cog"></i><span>관리</span></div><i class="fas fa-chevron-right arrow-icon {% if active_menu == 'management' %}rotated{% endif %}"></i></div>
-                <ul class="sub-menu {% if active_menu == 'management' %}active{% endif %}">
-                    <li><a href="{% url 'order_manage_new' %}">주문관리</a></li>
-                    <li><a href="{% url 'stock_manage' %}">재고관리</a></li>
-                    <li><a href="{% url 'user_manage' %}">사용자관리</a></li>
-                    <li><a href="{% url 'shipper_list' %}">화주사관리</a></li>
-                </ul>
-            </li>
-        </ul>
-    </nav>
 
     <div class="main-content">
         <div id="page-content">
