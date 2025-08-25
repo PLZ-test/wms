@@ -5,6 +5,7 @@ wms/templates/wms_app/dashboard.html
 - [수정 사항]
 - 1. 각 메뉴 카드의 세로 크기를 키우기 위해 내부 여백(padding)을 늘렸습니다.
 - 2. 그래프 영역(graph-placeholder)의 높이를 더 크게 조정했습니다.
+- [수정 2] '관리' 카드의 링크를 새로운 통합 관리 페이지로 변경했습니다.
 {% endcomment %}
 
 {% block extra_head %}
@@ -34,9 +35,7 @@ wms/templates/wms_app/dashboard.html
         background-color: #ffffff;
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-        /* --- [수정] 카드 내부의 상하좌우 여백을 늘립니다. --- */
         padding: 30px;
-        /* ------------------------------------------- */
         transition: transform 0.2s, box-shadow 0.2s;
         display: block;
         text-decoration: none;
@@ -47,7 +46,6 @@ wms/templates/wms_app/dashboard.html
         box-shadow: 0 6px 12px rgba(0,0,0,0.1);
     }
 
-    /* --- [수정] 그래프 미리보기 영역의 높이를 늘립니다. --- */
     .graph-placeholder {
         height: 220px;
         background-color: #f3f4f6;
@@ -59,7 +57,6 @@ wms/templates/wms_app/dashboard.html
         font-size: 1em;
         margin-bottom: 20px;
     }
-    /* ----------------------------------------------- */
 
     /* 주 메뉴 제목 스타일 */
     .menu-card h2 {
@@ -109,10 +106,12 @@ wms/templates/wms_app/dashboard.html
             <div class="graph-placeholder">(월별 정산금액 그래프 영역)</div>
         </a>
 
-        <a href="{% url 'stock_manage' %}" class="menu-card">
+        {# --- [수정] '관리' 카드의 링크를 stock_manage에서 management_dashboard로 변경 --- #}
+        <a href="{% url 'management_dashboard' %}" class="menu-card">
             <h2><i class="fas fa-cog"></i>관리</h2>
             <div class="graph-placeholder">(재고 현황 파이차트 영역)</div>
         </a>
+        {# -------------------------------------------------------------------------- #}
 
     </div>
 </div>

@@ -1,8 +1,10 @@
+// static/js/main.js
+
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. DOM 요소
-    const sidebar = document.querySelector('.sidebar');
-    const mainContent = document.querySelector('.main-content');
-    const hamburgerIcon = document.querySelector('.hamburger-icon');
+    // --- [수정] 더 이상 사용하지 않는 DOM 요소 선택 코드를 삭제합니다. ---
+    // const sidebar = document.querySelector('.sidebar');
+    // const mainContent = document.querySelector('.main-content');
+    // const hamburgerIcon = document.querySelector('.hamburger-icon');
 
     // 2. 헬퍼 함수 및 DatePicker 초기화
     function formatDate(date) {
@@ -78,47 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. 이벤트 핸들러 및 초기화
     const initialize = () => {
-        // 햄버거 메뉴 토글
-        if (hamburgerIcon) {
-            hamburgerIcon.addEventListener('click', () => {
-                sidebar.classList.toggle('collapsed');
-                mainContent.classList.toggle('collapsed');
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.toggle('active');
-                }
-            });
-        }
+        // --- [수정] 햄버거 메뉴 토글 관련 코드를 전부 삭제합니다. ---
         
-        // 사이드바 메뉴 아코디언 (클릭 이벤트)
-        document.querySelectorAll('.sidebar-menu .main-item').forEach(item => {
-            item.addEventListener('click', e => {
-                e.stopPropagation();
-                const subMenu = item.nextElementSibling;
-                const arrowIcon = item.querySelector('.arrow-icon');
-                
-                // 이미 열려있는 다른 메뉴가 있다면 닫기
-                const alreadyOpenMenu = document.querySelector('.sub-menu.active');
-                if (alreadyOpenMenu && alreadyOpenMenu !== subMenu) {
-                    alreadyOpenMenu.classList.remove('active');
-                    alreadyOpenMenu.previousElementSibling.querySelector('.arrow-icon').classList.remove('rotated');
-                }
-                
-                // 현재 클릭한 메뉴 토글
-                subMenu?.classList.toggle('active');
-                arrowIcon?.classList.toggle('rotated');
-            });
-        });
-
-        // 모바일에서 하위 메뉴 클릭 시 사이드바 닫기
-        document.querySelector('.sidebar-menu').addEventListener('click', (event) => {
-            if (event.target.closest('a') && !event.target.closest('.main-item')) {
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.remove('active');
-                    sidebar.classList.add('collapsed');
-                    mainContent.classList.add('collapsed');
-                }
-            }
-        });
+        // --- [수정] 사이드바 메뉴 관련 코드를 전부 삭제합니다. ---
     };
 
     initialize();

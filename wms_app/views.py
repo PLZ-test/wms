@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.http import JsonResponse, HttpResponseBadRequest
-from django.db.models import Sum, F, Count
+from django.db.models import Sum, F, Count, Q
 from datetime import datetime
 from django.db import transaction
 from django.contrib.auth import login, logout
@@ -14,6 +14,7 @@ from django.contrib.auth.views import LoginView
 from django.contrib import messages
 from .models import Center, Shipper, Courier, Product, Order, StockMovement, User, SalesChannel, OrderItem
 from .forms import CenterForm, ShipperForm, CourierForm, ProductForm, StockIOForm, StockUpdateForm, UserUpdateForm, CustomUserCreationForm
+import openpyxl
 
 # ----------------------------------------
 # API 뷰
@@ -26,47 +27,35 @@ def order_list_api(request):
     JavaScript에서 이 API를 호출하여 주문 관리 페이지의 테이블을 동적으로 구성합니다.
     URL 파라미터(status)에 따라 '성공' 또는 '오류' 주문을 필터링합니다.
     """
-    # URL 쿼리 파라미터에서 'status' 값을 가져옵니다. (e.g., /api/orders/?status=error)
     status = request.GET.get('status')
-    
-    # 모든 주문 객체를 기본으로 조회합니다.
     orders = Order.objects.all()
 
-    # status 값에 따라 주문 목록을 필터링합니다.
     if status == 'success':
-        # 'ERROR' 상태가 아닌 모든 주문을 '성공'으로 간주합니다.
         orders = orders.exclude(order_status='ERROR')
     elif status == 'error':
-        # 'ERROR' 상태인 주문만 필터링합니다.
         orders = orders.filter(order_status='ERROR')
     
-    # JSON으로 변환할 파이썬 딕셔너리 리스트를 생성합니다.
     data = []
     for order in orders:
-        # 각 주문에 포함된 상품 목록을 만듭니다.
         items = [{'product_name': item.product.name, 'quantity': item.quantity} for item in order.items.all()]
         data.append({
             'id': order.id,
             'order_no': order.order_no,
-            'shipper': order.shipper.name if order.shipper else '-', # 화주사가 없는 경우 '-' 표시
-            'channel': order.channel.name if order.channel else '-', # 판매채널이 없는 경우 '-' 표시
+            'shipper': order.shipper.name if order.shipper else '-',
+            'channel': order.channel.name if order.channel else '-',
             'recipient': order.recipient_name,
-            'status': order.get_order_status_display(), # 모델에 정의된 상태값('PENDING')을 '주문접수'와 같이 변환
+            'status': order.get_order_status_display(),
             'error_message': order.error_message,
             'items': items,
         })
-    # 최종 데이터를 JSON 형식으로 응답합니다.
     return JsonResponse({'orders': data})
 
 def check_username(request):
     """
     회원가입 시 사용자 아이디(username) 중복 여부를 실시간으로 확인하는 API 뷰입니다.
     """
-    # GET 요청 파라미터에서 'username' 값을 가져옵니다.
     username = request.GET.get('username', None)
-    # User 모델에서 해당 username(대소문자 무시)을 가진 사용자가 존재하는지 확인합니다.
     is_taken = User.objects.filter(username__iexact=username).exists()
-    # 결과를 JSON 형식으로 응답합니다. is_available이 true이면 사용 가능한 아이디입니다.
     data = {'is_available': not is_taken}
     return JsonResponse(data)
 
@@ -75,38 +64,29 @@ def order_chart_data(request):
     """
     대시보드의 주문 현황 차트에 필요한 데이터를 기간별로 조회하여 JSON으로 반환하는 API 뷰입니다.
     """
-    # URL 파라미터에서 시작일과 종료일을 가져옵니다.
     start_date_str = request.GET.get('start')
     end_date_str = request.GET.get('end')
 
-    # 날짜 값이 없으면 오류 응답을 반환합니다.
     if not start_date_str or not end_date_str:
         return JsonResponse({'error': 'Date range not provided'}, status=400)
 
-    # 문자열 형태의 날짜를 datetime 객체로 변환합니다.
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
     end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
 
-    # 해당 기간 내의 주문 데이터를 필터링합니다. (order_date는 DateTimeField이므로 .date로 날짜만 비교)
     orders = Order.objects.filter(order_date__date__range=[start_date, end_date])
-    # 주문 상태(order_status)별로 주문 개수를 집계합니다.
     status_counts = orders.values('order_status').annotate(count=Count('id'))
     
-    # 차트에 표시할 기본 데이터 구조를 정의합니다.
     data = {'주문접수': 0, '처리중': 0, '출고완료': 0, '배송완료': 0, '주문취소':0, '오류':0}
-    # 모델의 영문 상태값과 차트 라벨(한글)을 매핑합니다.
     status_map = {
         'PENDING': '주문접수', 'PROCESSING': '처리중', 'SHIPPED': '출고완료',
         'DELIVERED': '배송완료', 'CANCELED': '주문취소', 'ERROR': '오류'
     }
 
-    # DB에서 집계한 결과를 순회하며 data 딕셔너리의 값을 업데이트합니다.
     for item in status_counts:
         status_key = status_map.get(item['order_status'])
         if status_key:
             data[status_key] = item['count']
 
-    # Chart.js가 요구하는 형식에 맞춰 JSON으로 응답합니다.
     return JsonResponse({
         'labels': list(data.keys()),
         'data': list(data.values()),
@@ -116,10 +96,7 @@ def order_chart_data(request):
 def delivery_chart_data(request):
     """
     대시보드의 배송 현황 차트에 필요한 데이터를 JSON으로 반환하는 API 뷰입니다.
-    (현재는 임시 데이터를 반환하며, 실제 배송 모델 연동 시 수정이 필요합니다.)
     """
-    # 이 함수는 현재 배송 관련 모델이 없으므로, 임시 데이터를 반환합니다.
-    # 추후 실제 배송 추적 기능이 추가되면 해당 모델을 조회하도록 수정해야 합니다.
     data = {'집하완료': 12, '배송중': 8, '배송완료': 30}
     return JsonResponse(data)
 
@@ -129,50 +106,34 @@ def delivery_chart_data(request):
 # ----------------------------------------
 
 def wms_logout_view(request):
-    """
-    사용자를 로그아웃 처리하고 로그인 페이지로 리디렉션합니다.
-    """
     logout(request)
     return redirect('login')
 
 class CustomLoginView(LoginView):
-    """
-    기본 LoginView를 상속받아 커스텀 메시지를 추가한 로그인 뷰입니다.
-    """
     template_name = 'registration/login.html'
     
     def form_invalid(self, form):
-        # 폼 유효성 검증 실패 시 (아이디/비밀번호 불일치 등) 에러 메시지를 추가합니다.
         messages.error(self.request, '아이디 또는 비밀번호가 올바르지 않습니다.')
         return super().form_invalid(form)
 
     def form_valid(self, form):
-        # 폼 유효성 검증 성공 후 추가적인 조건을 확인합니다.
         user = form.get_user()
-        # 사용자가 비활성(is_active=False) 상태인 경우 로그인을 막고 에러 메시지를 표시합니다.
         if not user.is_active:
             messages.error(self.request, '아직 승인되지 않은 계정입니다. 관리자에게 문의하세요.')
-            # form_invalid를 호출하여 로그인 실패 흐름을 따릅니다.
             return self.form_invalid(form)
         return super().form_valid(form)
 
 def signup_view(request):
-    """
-    회원가입 페이지를 렌더링하고, 사용자 입력을 처리하여 계정을 생성하는 뷰입니다.
-    """
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            form.save() # 사용자를 생성합니다.
-            return redirect('signup_done') # 가입 완료 페이지로 이동합니다.
+            form.save()
+            return redirect('signup_done')
     else:
         form = CustomUserCreationForm()
     return render(request, 'registration/signup.html', {'form': form})
 
 def signup_done_view(request):
-    """
-    회원가입 완료 후 보여주는 정적 페이지 뷰입니다.
-    """
     return render(request, 'registration/signup_done.html')
 
 
@@ -182,29 +143,40 @@ def signup_done_view(request):
 
 @login_required
 def dashboard(request):
-    """ 대시보드 메인 페이지를 렌더링합니다. """
     context = {'page_title': '홈', 'active_menu': 'dashboard'}
     return render(request, 'wms_app/dashboard.html', context)
 
 @login_required
 def order_manage(request):
-    """ 주문 관리 페이지를 렌더링합니다. """
     context = {'page_title': '주문 관리', 'active_menu': 'orders'}
     return render(request, 'wms_app/order_manage.html', context)
 
+# --- [신규] 통합 관리 페이지를 위한 뷰 함수 ---
+@login_required
+def management_dashboard(request):
+    """
+    정산, 센터, 화주사, 택배사 등 각종 관리 기능을 모아 보여주는
+    통합 관리 대시보드 페이지를 렌더링합니다.
+    """
+    # 상단에 표시할 요약 정보를 계산합니다.
+    context = {
+        'page_title': '통합 관리',
+        'active_menu': 'management',
+        'shipper_count': Shipper.objects.count(),
+        'product_count': Product.objects.count(),
+        'center_count': Center.objects.count(),
+        'courier_count': Courier.objects.count(),
+    }
+    return render(request, 'wms_app/management_dashboard.html', context)
+# -----------------------------------------
+
 @login_required
 def stock_manage(request):
-    """
-    상품 목록과 현재 재고를 보여주는 재고 관리 페이지를 렌더링합니다.
-    """
-    # Product와 연관된 Shipper, Center 정보를 함께 조회하여 DB 접근 횟수를 줄입니다(select_related).
     queryset = Product.objects.select_related('shipper__center').all()
     
-    # 세션에 저장된 필터링 값(센터, 화주사)을 가져옵니다.
     selected_center = request.session.get('selected_center')
     selected_shipper = request.session.get('selected_shipper')
     
-    # 필터링 값이 있으면 쿼리셋에 필터를 적용합니다.
     if selected_center:
         queryset = queryset.filter(shipper__center__name=selected_center)
     if selected_shipper:
@@ -213,62 +185,51 @@ def stock_manage(request):
     context = {
         'page_title': '재고관리',
         'object_list': queryset,
-        'columns': [ # generic_list.html 템플릿에서 사용할 테이블 컬럼 정보
+        'columns': [
             {'header': '상품명', 'key': 'name'},
             {'header': '크기(cm)', 'is_size': True},
             {'header': '재고', 'key': 'quantity'},
             {'header': '바코드', 'key': 'barcode'},
             {'header': '화주사명', 'key': 'shipper'},
         ],
-        'active_menu': 'management', # 사이드바 메뉴 활성화를 위한 값
-        'update_url_name': 'stock_update', # 수정 버튼에 연결될 URL 패턴 이름
+        'active_menu': 'management',
+        'update_url_name': 'stock_update',
     }
     return render(request, 'wms_app/generic_list.html', context)
 
 @login_required
-@transaction.atomic # DB 트랜잭션을 적용하여 작업 중 오류 발생 시 롤백
+@transaction.atomic
 def stock_io_view(request):
-    """
-    재고의 입고 및 출고를 처리하는 페이지 뷰입니다.
-    """
     if request.method == 'POST':
-        # form_data를 직접 구성하여 form에 전달
         form_data = request.POST.copy()
-        form_data['product'] = request.POST.get('product') # product id를 form_data에 추가
+        form_data['product'] = request.POST.get('product')
         form = StockIOForm(form_data)
         
         if form.is_valid():
             product = form.cleaned_data['product']
             quantity = form.cleaned_data['quantity']
             memo = form.cleaned_data['memo']
-            io_type = request.POST.get('io_type') # 'in' 또는 'out'
+            io_type = request.POST.get('io_type')
 
             if io_type == 'in':
-                # 입고 처리: 현재 재고에 수량을 더함
                 product.quantity = F('quantity') + quantity
                 movement_type = 'IN'
             elif io_type == 'out':
-                # 출고 처리 전, 최신 재고 상태를 DB에서 다시 가져옴 (동시성 문제 방지)
                 product.refresh_from_db()
                 if product.quantity < quantity:
                     return HttpResponseBadRequest("재고가 부족합니다.")
-                # 출고 처리: 현재 재고에서 수량을 뺌
                 product.quantity = F('quantity') - quantity
                 movement_type = 'OUT'
             
-            product.save() # 상품의 재고 수량 변경사항을 DB에 저장
+            product.save()
             
-            # 재고 변동 이력을 StockMovement 모델에 기록
             StockMovement.objects.create(
-                product=product, 
-                movement_type=movement_type,
-                quantity=quantity, 
-                memo=memo
+                product=product, movement_type=movement_type,
+                quantity=quantity, memo=memo
             )
             return redirect('stock_io')
             
     products = Product.objects.select_related('shipper__center').all()
-    # 상단 필터링 로직 (세션값에 따라 상품 목록 필터링)
     selected_center = request.session.get('selected_center')
     selected_shipper = request.session.get('selected_shipper')
     if selected_center:
@@ -281,9 +242,6 @@ def stock_io_view(request):
 
 @login_required
 def stock_update(request, pk):
-    """
-    개별 상품의 재고 수량을 직접 수정하는 뷰입니다.
-    """
     product = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
         form = StockUpdateForm(request.POST, instance=product)
@@ -294,32 +252,22 @@ def stock_update(request, pk):
         form = StockUpdateForm(instance=product)
     
     context = {
-        'form': form, 
-        'product': product,
-        'page_title': '재고 수량 수정', 
-        'active_menu': 'management'
+        'form': form, 'product': product,
+        'page_title': '재고 수량 수정', 'active_menu': 'management'
     }
     return render(request, 'wms_app/stock_update_form.html', context)
 
 @login_required
 def stock_movement_history(request):
-    """
-    모든 상품의 입출고 이력을 최신순으로 보여주는 페이지 뷰입니다.
-    """
     movements = StockMovement.objects.select_related('product__shipper').order_by('-timestamp')
     context = {
-        'page_title': '입출고 기록', 
-        'movements': movements,
+        'page_title': '입출고 기록', 'movements': movements,
         'active_menu': 'inout'
     }
     return render(request, 'wms_app/stock_history.html', context)
 
 @login_required
 def user_manage(request):
-    """
-    시스템 사용자(관리자 제외) 목록을 보여주는 관리 페이지 뷰입니다.
-    """
-    # 슈퍼유저가 아닌 모든 사용자를 조회합니다.
     user_list = User.objects.filter(is_superuser=False)
     context = {
         'page_title': '사용자 관리',
@@ -330,9 +278,6 @@ def user_manage(request):
 
 @login_required
 def user_update(request, pk):
-    """
-    사용자의 역할, 소속, 활성 상태를 수정하는 페이지 뷰입니다.
-    """
     user_instance = get_object_or_404(User, pk=pk)
     if request.method == 'POST':
         form = UserUpdateForm(request.POST, instance=user_instance)
@@ -343,13 +288,10 @@ def user_update(request, pk):
         form = UserUpdateForm(instance=user_instance)
     
     context = {
-        'form': form, 
-        'target_user': user_instance,
-        'page_title': '사용자 역할 및 소속 수정', 
-        'active_menu': 'management',
+        'form': form, 'target_user': user_instance,
+        'page_title': '사용자 역할 및 소속 수정', 'active_menu': 'management',
     }
     return render(request, 'wms_app/user_form.html', context)
-
 
 # --- [임시] 기능 개발 예정 페이지 ---
 @login_required
@@ -376,12 +318,9 @@ def settlement_billing(request):
 def settlement_config(request):
     return render(request, 'wms_app/placeholder_page.html', {'page_title': '정산내역설정', 'active_menu': 'settlement'})
 
-
 # ----------------------------------------
 # 기준정보 관리 뷰 (클래스 기반)
 # ----------------------------------------
-
-# --- 센터(Center) CRUD 뷰 ---
 class CenterListView(LoginRequiredMixin, ListView):
     model = Center
     template_name = 'wms_app/generic_list.html'
@@ -424,18 +363,14 @@ class CenterUpdateView(LoginRequiredMixin, UpdateView):
 class CenterDeleteView(LoginRequiredMixin, DeleteView):
     model = Center
     success_url = reverse_lazy('center_list')
-    # 별도 템플릿 없이 POST 요청 처리 후 success_url로 리디렉션
 
-# --- 화주사(Shipper) CRUD 뷰 ---
 class ShipperListView(LoginRequiredMixin, ListView):
     model = Shipper
     template_name = 'wms_app/generic_list.html'
     context_object_name = 'object_list'
     
     def get_queryset(self):
-        # 기본 쿼리셋에 센터 정보를 미리 join(select_related)
         queryset = super().get_queryset().select_related('center')
-        # 세션 필터링 적용
         selected_center = self.request.session.get('selected_center')
         if selected_center:
             queryset = queryset.filter(center__name=selected_center)
@@ -449,7 +384,6 @@ class ShipperListView(LoginRequiredMixin, ListView):
             'create_url': reverse_lazy('shipper_create'),
             'update_url_name': 'shipper_update',
             'delete_url_name': 'shipper_delete',
-            # '판매 상품' 버튼과 같이 추가적인 동작을 위한 설정
             'extra_actions': [{'label': '판매 상품', 'url_name': 'shipper_product_list', 'class': 'btn-info'}],
             'active_menu': 'management'
         })
@@ -481,7 +415,6 @@ class ShipperDeleteView(LoginRequiredMixin, DeleteView):
     model = Shipper
     success_url = reverse_lazy('shipper_list')
 
-# --- 택배사(Courier) CRUD 뷰 ---
 class CourierListView(LoginRequiredMixin, ListView):
     model = Courier
     template_name = 'wms_app/generic_list.html'
@@ -527,41 +460,34 @@ class CourierDeleteView(LoginRequiredMixin, DeleteView):
 # --- 화주사별 상품 관리 뷰 ---
 @login_required
 def shipper_product_list(request, shipper_pk):
-    """ 특정 화주사에 속한 상품 목록을 보여줍니다. """
     shipper = get_object_or_404(Shipper, pk=shipper_pk)
     products = Product.objects.filter(shipper=shipper)
     context = {
-        'shipper': shipper, 
-        'products': products,
-        'page_title': f'{shipper.name} 판매 상품', 
-        'active_menu': 'management'
+        'shipper': shipper, 'products': products,
+        'page_title': f'{shipper.name} 판매 상품', 'active_menu': 'management'
     }
     return render(request, 'wms_app/shipper_product_list.html', context)
 
 @login_required
 def shipper_product_create(request, shipper_pk):
-    """ 특정 화주사의 상품을 새로 등록합니다. """
     shipper = get_object_or_404(Shipper, pk=shipper_pk)
     if request.method == 'POST':
         form = ProductForm(request.POST)
         if form.is_valid():
-            product = form.save(commit=False) # DB에 바로 저장하지 않고 객체만 생성
-            product.shipper = shipper # 화주사 정보를 설정
-            product.save() # 최종 저장
+            product = form.save(commit=False)
+            product.shipper = shipper
+            product.save()
             return redirect('shipper_product_list', shipper_pk=shipper.pk)
     else:
         form = ProductForm()
     context = {
-        'form': form, 
-        'shipper': shipper,
-        'page_title': f'{shipper.name} 상품 등록', 
-        'active_menu': 'management'
+        'form': form, 'shipper': shipper,
+        'page_title': f'{shipper.name} 상품 등록', 'active_menu': 'management'
     }
     return render(request, 'wms_app/shipper_product_form.html', context)
 
 @login_required
 def shipper_product_update(request, pk):
-    """ 특정 상품의 정보를 수정합니다. """
     product = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
         form = ProductForm(request.POST, instance=product)
@@ -572,42 +498,176 @@ def shipper_product_update(request, pk):
         form = ProductForm(instance=product)
     context = {
         'form': form,
-        'page_title': '판매 상품 편집', 
-        'active_menu': 'management'
+        'page_title': '판매 상품 편집', 'active_menu': 'management'
     }
     return render(request, 'wms_app/shipper_product_form.html', context)
 
 @login_required
 def shipper_product_delete(request, pk):
-    """ 특정 상품을 삭제합니다. """
     product = get_object_or_404(Product, pk=pk)
     shipper_pk = product.shipper.pk
     if request.method == 'POST':
         product.delete()
         return redirect('shipper_product_list', shipper_pk=shipper_pk)
-    # GET 요청 등 비정상적인 접근 차단
     return HttpResponseBadRequest("잘못된 요청입니다.")
 
 # ----------------------------------------
 # 컨텍스트 프로세서
 # ----------------------------------------
-
 def filters(request):
-    """
-    모든 템플릿에 공통적으로 필요한 필터 데이터를 제공하는 컨텍스트 프로세서입니다.
-    이 함수는 settings.py의 TEMPLATES 설정에 등록되어야 합니다.
-    """
     selected_center_name = request.session.get('selected_center', '')
 
     shippers = Shipper.objects.all()
-    # 만약 특정 센터가 선택되었다면, 해당 센터에 소속된 화주사만 필터링합니다.
     if selected_center_name:
         shippers = shippers.filter(center__name=selected_center_name)
 
-    # 이 함수가 반환하는 딕셔너리는 모든 템플릿에서 변수처럼 사용할 수 있습니다.
     return {
         'centers': Center.objects.all(),
         'shippers': shippers,
         'selected_center': selected_center_name,
         'selected_shipper': request.session.get('selected_shipper', ''),
     }
+
+# ----------------------------------------
+# 엑셀 주문 등록 뷰 (디버깅 코드가 추가된 최종 수정본)
+# ----------------------------------------
+
+@login_required
+def order_excel_upload(request):
+    """
+    엑셀 파일을 업로드 받아 주문을 일괄 등록하는 뷰입니다.
+    """
+    if request.method == 'POST':
+        excel_file = request.FILES.get('excel_file')
+        if not excel_file:
+            messages.error(request, '엑셀 파일을 선택해주세요.')
+            return redirect('order_manage')
+        
+        # --- [디버깅용 코드] ---
+        print("--- [DEBUG] 엑셀 파일 업로드 시작 ---")
+        # --------------------
+
+        try:
+            wb = openpyxl.load_workbook(excel_file, data_only=True)
+            sheet = wb.active
+            
+            orders_data = {}
+            new_orders_to_create = []
+
+            print(f"--- [DEBUG] 총 {sheet.max_row - 1}개의 데이터 행을 읽기 시작합니다. ---")
+
+            for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+                if not any(row):
+                    continue
+
+                # --- [디버깅용 코드] ---
+                print(f"--- [DEBUG] {row_idx}번째 행 데이터: {row} ---")
+                # --------------------
+
+                order_no = str(row[0]).strip() if row[0] else None
+                shipper_name = str(row[1]).strip() if row[1] else None
+                channel_name = str(row[2]).strip() if row[2] else None
+                recipient_name = str(row[3]).strip() if row[3] else None
+                recipient_phone = str(row[4]).strip() if row[4] else ''
+                address = str(row[5]).strip() if row[5] else ''
+                product_identifier = str(row[6]).strip() if row[6] else None
+                quantity = int(row[7]) if row[7] else 0
+
+                if not all([shipper_name, channel_name, product_identifier, quantity > 0]):
+                    messages.warning(request, f'{row_idx}번째 행의 필수 정보(화주사, 채널, 상품, 수량)가 누락되어 건너뜁니다.')
+                    continue
+
+                item_info = {'product_identifier': product_identifier, 'quantity': quantity, 'row_idx': row_idx}
+                
+                if order_no:
+                    if order_no not in orders_data:
+                        orders_data[order_no] = {
+                            'shipper_name': shipper_name, 'channel_name': channel_name,
+                            'recipient_name': recipient_name, 'recipient_phone': recipient_phone, 'address': address,
+                            'items': []
+                        }
+                    orders_data[order_no]['items'].append(item_info)
+                else:
+                    new_orders_to_create.append({
+                        'shipper_name': shipper_name, 'channel_name': channel_name,
+                        'recipient_name': recipient_name, 'recipient_phone': recipient_phone, 'address': address,
+                        'item': item_info
+                    })
+            
+            print("--- [DEBUG] 엑셀 파일 파싱 완료. 데이터베이스 저장을 시작합니다. ---")
+
+            with transaction.atomic():
+                def find_product(identifier, shipper, row_idx):
+                    product_query = Product.objects.filter(
+                        Q(barcode=identifier) | Q(name=identifier),
+                        shipper=shipper
+                    )
+                    
+                    print(f"--- [DEBUG] '{identifier}' 상품 조회 시도... (화주사: {shipper.name}) ---")
+                    
+                    if product_query.count() == 1:
+                        product = product_query.first()
+                        print(f"--- [DEBUG] 상품 찾음: {product.name} ---")
+                        return product
+                    elif product_query.count() > 1:
+                        raise Exception(f"{row_idx}번째 행의 상품 '{identifier}'이(가) 해당 화주사에 여러 개 존재하여 특정할 수 없습니다.")
+                    else:
+                        raise Product.DoesNotExist(f"{row_idx}번째 행의 상품 '{identifier}'을(를) 찾을 수 없습니다.")
+
+                # 주문번호가 있는 주문들 처리
+                for order_no, data in orders_data.items():
+                    shipper = get_object_or_404(Shipper, name=data['shipper_name'])
+                    channel, _ = SalesChannel.objects.get_or_create(name=data['channel_name'])
+                    
+                    order, created = Order.objects.get_or_create(
+                        shipper=shipper, order_no=order_no,
+                        defaults={
+                            'channel': channel, 'recipient_name': data['recipient_name'],
+                            'recipient_phone': data['recipient_phone'], 'address': data['address'],
+                            'order_date': datetime.now(), 'order_status': 'PENDING'
+                        }
+                    )
+                    
+                    if created:
+                        print(f"--- [DEBUG] 주문 생성됨: {order.order_no} ---")
+                        for item_data in data['items']:
+                            product = find_product(item_data['product_identifier'], shipper, item_data['row_idx'])
+                            OrderItem.objects.create(order=order, product=product, quantity=item_data['quantity'])
+
+                # 주문번호가 없는 신규 주문들 처리
+                for data in new_orders_to_create:
+                    shipper = get_object_or_404(Shipper, name=data['shipper_name'])
+                    channel, _ = SalesChannel.objects.get_or_create(name=data['channel_name'])
+                    
+                    order = Order.objects.create(
+                        shipper=shipper,
+                        channel=channel,
+                        recipient_name=data['recipient_name'],
+                        recipient_phone=data['recipient_phone'],
+                        address=data['address'],
+                        order_date=datetime.now(),
+                        order_status='PENDING'
+                    )
+                    print(f"--- [DEBUG] 신규 주문 생성됨 (자동번호): {order.order_no} ---")
+                    
+                    product = find_product(data['item']['product_identifier'], shipper, data['item']['row_idx'])
+                    OrderItem.objects.create(order=order, product=product, quantity=data['item']['quantity'])
+            
+            total_created_count = len(orders_data) + len(new_orders_to_create)
+            if total_created_count > 0:
+                messages.success(request, f'{total_created_count}개의 주문이 성공적으로 등록되었습니다.')
+            print("--- [DEBUG] 모든 작업이 성공적으로 완료되었습니다. ---")
+
+        except Exception as e:
+            # --- [디버깅용 코드] ---
+            print(f"!!!!!!!!!!!!!!! [ERROR] !!!!!!!!!!!!!!!")
+            print(f"엑셀 업로드 중 오류가 발생했습니다: {e}")
+            import traceback
+            traceback.print_exc() # 상세한 오류 내역 출력
+            print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            # --------------------
+            messages.error(request, f'주문 등록 중 오류 발생: {e}')
+
+        return redirect('order_manage')
+
+    return redirect('order_manage')

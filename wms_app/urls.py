@@ -4,14 +4,11 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # --- [추가] 주문 목록 조회를 위한 API URL ---
-    # JavaScript가 이 주소로 요청을 보내 '성공' 또는 '오류' 목록을 받아옵니다.
+    # --- [추가] 엑셀 파일 업로드를 위한 URL ---
+    path('order/excel_upload/', views.order_excel_upload, name='order_excel_upload'),
+    
     path('api/orders/', views.order_list_api, name='order_list_api'),
-    # -----------------------------------------
-
-    # --- [추가] 아이디 중복 확인 API를 위한 URL ---
     path('api/check-username/', views.check_username, name='check_username'),
-    # ---------------------------------------------
     
     # Dashboard
     path('', views.dashboard, name='dashboard'),
@@ -33,6 +30,9 @@ urlpatterns = [
     path('settlement/config/', views.settlement_config, name='settlement_config'),
     
     # Management
+    # --- [추가] 통합 관리 페이지를 위한 URL ---
+    path('management/dashboard/', views.management_dashboard, name='management_dashboard'),
+    # ------------------------------------
     path('management/orders/', views.order_manage_new, name='order_manage_new'),
     path('management/stock/', views.stock_manage, name='stock_manage'),
     
