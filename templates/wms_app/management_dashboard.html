@@ -2,7 +2,7 @@
 
 {% comment %}
 wms/templates/wms_app/management_dashboard.html
-- '관리' 메뉴의 메인 허브 역할을 하는 신규 페이지입니다.
+- [수정] '정산 관리' 카드를 '상품 관리'로 변경하고 아이콘 및 링크 수정
 {% endcomment %}
 
 {% block extra_head %}
@@ -84,8 +84,13 @@ wms/templates/wms_app/management_dashboard.html
 
 {% block content %}
 <div class="page-header">
+    <div>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">뒤로가기</a>
+    </div>
     <h1>통합 관리</h1>
+    <div class="btn-group"></div>
 </div>
+
 
 <section class="summary-section">
     <h3>관리 현황 요약</h3>
@@ -99,7 +104,6 @@ wms/templates/wms_app/management_dashboard.html
 
 <section class="management-grid">
 
-    {# --- [수정] 센터 관리 카드를 첫 번째로 이동하고 등록 버튼 추가 --- #}
     <div class="mgmt-card">
         <div class="mgmt-card-header">
             <div class="mgmt-card-icon"><i class="fas fa-warehouse"></i></div>
@@ -110,20 +114,23 @@ wms/templates/wms_app/management_dashboard.html
              <a href="{% url 'center_list' %}" class="btn btn-info">목록 보기</a>
         </div>
     </div>
-    {# ----------------------------------------------------------- #}
 
-    {# --- [수정] 정산 관리 카드를 두 번째로 이동하고 등록 버튼 추가 (임시 링크) --- #}
+    {# --- [수정] '정산 관리' 카드를 '상품 관리'로 변경 --- #}
     <div class="mgmt-card">
         <div class="mgmt-card-header">
-            <div class="mgmt-card-icon"><i class="fas fa-coins"></i></div>
-            <h2>정산 관리</h2>
+            {# 아이콘을 상품(box) 아이콘으로 변경 #}
+            <div class="mgmt-card-icon"><i class="fas fa-box"></i></div>
+            {# 제목을 '상품 관리'로 변경 #}
+            <h2>상품 관리</h2>
         </div>
         <div class="mgmt-card-actions">
-            <a href="{% url 'settlement_status' %}" class="btn btn-primary">등록</a>
-            <a href="{% url 'settlement_status' %}" class="btn btn-info">정산 현황 보기</a>
+            {# 상품 등록은 화주사를 먼저 선택해야 하므로, 화주사 목록 페이지로 연결 #}
+            <a href="{% url 'shipper_list' %}" class="btn btn-primary">상품 등록하기</a>
+            {# 재고 현황 페이지로 연결 #}
+            <a href="{% url 'stock_manage' %}" class="btn btn-info">재고 현황 보기</a>
         </div>
     </div>
-    {# ----------------------------------------------------------------- #}
+    {# ---------------------------------------------------- #}
 
     <div class="mgmt-card">
         <div class="mgmt-card-header">

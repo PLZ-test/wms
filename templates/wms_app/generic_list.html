@@ -3,11 +3,22 @@
 
 {% block content %}
 <div class="page-header">
+    {# --- [수정] '뒤로가기' 버튼을 담을 div를 추가합니다. --- #}
+    <div>
+        {# 이 버튼을 누르면 통합 관리 대시보드로 이동합니다. #}
+        <a href="{% url 'management_dashboard' %}" class="btn btn-secondary">뒤로가기</a>
+    </div>
+    {# ---------------------------------------------------- #}
+    
     <h1>{{ page_title }}</h1>
+    
     {% if create_url %}
     <div class="btn-group">
         <a href="{{ create_url }}" class="btn btn-primary">등록</a>
     </div>
+    {% else %}
+    {# create_url이 없을 때도 레이아웃 유지를 위해 빈 div 추가 #}
+    <div class="btn-group"></div>
     {% endif %}
 </div>
 <p>현재 필터: <strong>{{ selected_center|default:'전체 센터' }}</strong>, <strong>{{ selected_shipper|default:'전체 화주사' }}</strong></p>

@@ -1,6 +1,6 @@
 {% comment %}
 wms/templates/wms_app/base.html
-- [수정] 로그아웃 버튼이 잘리지 않도록 오른쪽 여백 추가
+- [수정] 로그아웃 버튼의 오른쪽 여백 제거
 {% endcomment %}
 
 {% load static %}
@@ -51,8 +51,8 @@ wms/templates/wms_app/base.html
                 </form>
             </div>
         </div>
-        {# --- [수정] header-right div에 오른쪽 여백(margin) 스타일 추가 --- #}
-        <div class="header-right" style="margin-right: 20px;">
+        {# --- [수정] header-right div의 인라인 스타일(margin-right)을 완전히 제거합니다. --- #}
+         <div class="header-right" style="margin-right: 40px;">
             {% if user.is_authenticated %}
             <form method="post" action="{% url 'logout' %}" style="margin: 0;">
                 {% csrf_token %}

@@ -271,22 +271,28 @@ header {
     text-align: center;
 }
 
+/* --- [수정] 마지막 컬럼(관리 버튼)의 정렬 및 너비 조정 --- */
 .list-table th:last-child,
 .list-table td:last-child {
-    width: 20%;
+    width: 15%; /* 너비를 살짝 줄여 공간 확보 */
     text-align: center;
 }
 
 .list-table .action-buttons {
     display: flex;
     gap: 5px;
-    justify-content: center;
+    justify-content: center; /* 버튼들을 항상 가운데 정렬 */
 }
 
+/* --- [수정] 테이블 내 버튼 크기 통일 --- */
 .list-table .action-buttons .btn {
     padding: 5px 10px;
     font-size: 12px;
+    width: 100px; /* 모든 버튼의 너비를 동일하게 고정 */
+    box-sizing: border-box;
 }
+/* ------------------------------------------- */
+
 
 .dashboard-container {
     display: flex;

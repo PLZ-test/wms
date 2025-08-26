@@ -1,0 +1,263 @@
+{% extends 'wms_app/base.html' %}
+
+{% block extra_head %}
+<style>
+    /* 상세보기 모달(팝업창) 스타일 */
+    .modal {
+        display: none; 
+        position: fixed;
+        z-index: 1002;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 600px;
+        border-radius: 8px;
+        position: relative;
+    }
+    .close-btn {
+        color: #aaa;
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .close-btn:hover {
+        color: black;
+    }
+    #modal-items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    #modal-items-table th, #modal-items-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+    #modal-items-table th {
+        background-color: #f2f2f2;
+    }
+
+    /* 버튼 크기 강제 통일을 위한 스타일 */
+    .btn-fixed-size {
+        width: 110px !important;
+        padding: 5px 10px !important;
+        font-size: 12px !important;
+        box-sizing: border-box;
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="{% url 'order_manage' %}" class="btn btn-secondary">뒤로가기</a>
+    </div>
+    <h1>{{ page_title }}</h1>
+    <div class="btn-group">
+        {% if list_type == 'success' and orders %}
+            <button id="print-all-btn" class="btn btn-primary">선택 송장 출력</button>
+        {% endif %}
+    </div>
+</div>
+
+<table class="list-table">
+    <thead>
+        <tr>
+            {% if list_type == 'success' %}
+                <th style="width: 5%; text-align: center;"><input type="checkbox" id="select-all-checkbox"></th>
+            {% endif %}
+            <th style="text-align: center;">주문번호</th>
+            <th style="text-align: center;">화주사</th>
+            <th style="text-align: center;">수취인</th>
+            <th style="text-align: center;">상품내역</th>
+            {% if list_type == 'error' %}
+                <th style="width: 30%; text-align: center;">오류 원인</th>
+            {% endif %}
+            <th style="text-align: center;">관리</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for order in orders %}
+        <tr>
+            {% if list_type == 'success' %}
+                <td data-label="선택"><input type="checkbox" class="order-checkbox" value="{{ order.id }}"></td>
+            {% endif %}
+            <td data-label="주문번호">{{ order.order_no }}</td>
+            <td data-label="화주사">{{ order.shipper.name }}</td>
+            <td data-label="수취인">{{ order.recipient_name }}</td>
+            
+            <td data-label="상품내역" style="text-align: center;">
+                <button class="btn btn-secondary btn-sm view-details-btn btn-fixed-size" data-order-id="{{ order.id }}">상세보기</button>
+            </td>
+            
+            {% if list_type == 'error' %}
+                <td data-label="오류 원인" style="color: var(--danger-color);">{{ order.error_message }}</td>
+            {% endif %}
+            <td data-label="관리">
+                <div class="action-buttons">
+                    {% if list_type == 'success' %}
+                        <button class="btn btn-info print-single-btn btn-fixed-size" data-order-id="{{ order.id }}">송장 출력</button>
+                    {% else %}
+                        <a href="{% url 'order_update' order.id %}" class="btn btn-primary btn-fixed-size">수정</a>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="{% if list_type == 'success' %}6{% else %}5{% endif %}" style="text-align: center;">데이터가 없습니다.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div id="details-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2>상품 상세 내역</h2>
+        <table id="modal-items-table">
+            <thead>
+                <tr>
+                    <th>상품명</th>
+                    <th>수량</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ orders_json|json_script:"orders-data-json" }}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- 상세보기 로직 (최종 안정화 버전) ---
+    const modal = document.getElementById('details-modal');
+    const dataElement = document.getElementById('orders-data-json');
+
+    if (modal && dataElement) {
+        try {
+            const ordersData = JSON.parse(dataElement.textContent);
+            const modalTableBody = modal.querySelector('#modal-items-table tbody');
+            const closeBtn = modal.querySelector('.close-btn');
+
+            document.querySelectorAll('.view-details-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const orderId = parseInt(this.getAttribute('data-order-id'), 10);
+                    const order = ordersData.find(o => o.id === orderId);
+
+                    modalTableBody.innerHTML = '';
+                    if (order && order.items.length > 0) {
+                        order.items.forEach(item => {
+                            const row = modalTableBody.insertRow();
+                            row.insertCell(0).textContent = item.product_name;
+                            row.insertCell(1).textContent = `${item.quantity}개`;
+                        });
+                    } else {
+                        const row = modalTableBody.insertRow();
+                        const cell = row.insertCell(0);
+                        cell.colSpan = 2;
+                        cell.textContent = '상품 정보가 없습니다.';
+                    }
+                    modal.style.display = 'block';
+                });
+            });
+
+            if(closeBtn) {
+                closeBtn.addEventListener('click', () => modal.style.display = 'none');
+            }
+            window.addEventListener('click', (event) => {
+                if (event.target === modal) modal.style.display = 'none';
+            });
+        } catch (e) {
+            console.error("상세보기 데이터를 처리하는 중 오류가 발생했습니다:", e);
+        }
+    }
+
+    // --- 송장 출력 로직 ---
+    if ("{{ list_type }}" === "success") {
+        function printInvoices(ids) {
+            if (!ids || ids.length === 0) {
+                alert('출력할 주문을 선택해주세요.');
+                return;
+            }
+            
+            const url = `{% url 'order_invoice' %}`;
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            formData.append('order_ids', ids.join(','));
+
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(html => {
+                const doc = iframe.contentWindow.document;
+                doc.open();
+                doc.write(html);
+                doc.close();
+
+                iframe.onload = () => {
+                    setTimeout(() => {
+                        iframe.contentWindow.print();
+                        document.body.removeChild(iframe);
+                    }, 500);
+                };
+            })
+            .catch(error => {
+                console.error('송장 출력 중 오류 발생:', error);
+                document.body.removeChild(iframe);
+            });
+        }
+        
+        document.querySelectorAll('.print-single-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const orderId = button.getAttribute('data-order-id');
+                printInvoices([orderId]);
+            });
+        });
+
+        const printAllBtn = document.getElementById('print-all-btn');
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        const orderCheckboxes = document.querySelectorAll('.order-checkbox');
+
+        if (printAllBtn && selectAllCheckbox) {
+            printAllBtn.addEventListener('click', () => {
+                const selectedIds = Array.from(orderCheckboxes)
+                                        .filter(cb => cb.checked)
+                                        .map(cb => cb.value);
+                printInvoices(selectedIds);
+            });
+
+            selectAllCheckbox.addEventListener('change', (e) => {
+                orderCheckboxes.forEach(checkbox => {
+                    checkbox.checked = e.target.checked;
+                });
+            });
+        }
+    }
+});
+</script>
+{% endblock %}

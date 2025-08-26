@@ -6,15 +6,18 @@ from . import views
 urlpatterns = [
     # API 및 엑셀 업로드 URL
     path('order/excel_upload/', views.order_excel_upload, name='order_excel_upload'),
+    
+    # --- [추가] 송장 출력 URL ---
+    path('order/invoice/', views.order_invoice_view, name='order_invoice'),
+    # --------------------------
+
     path('api/orders/', views.order_list_api, name='order_list_api'),
     path('api/check-username/', views.check_username, name='check_username'),
     path('api/order-chart/', views.order_chart_data, name='order_chart_data'),
     path('api/delivery-chart/', views.delivery_chart_data, name='delivery_chart_data'),
     path('api/channel-order-chart/', views.channel_order_chart_data, name='channel_order_chart_data'),
 
-    # --- [수정] 아래 한 줄이 홈 화면(대시보드)을 정의하는 가장 중요한 부분입니다. ---
     path('', views.dashboard, name='dashboard'),
-    # --------------------------------------------------------------------
 
     # Order (주문)
     path('order/manage/', views.order_manage, name='order_manage'),

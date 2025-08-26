@@ -83,7 +83,8 @@ wms/templates/wms_app/dashboard.html
 <div class="home-container">
     <div class="home-menu-grid">
         
-        <div class="menu-card">
+        {# --- [수정] div를 a 태그로 변경하고, 클릭 시 order_manage 페이지로 이동하도록 href 추가 --- #}
+        <a href="{% url 'order_manage' %}" class="menu-card">
             <h2>
                 <span><i class="fas fa-shopping-cart"></i>주문</span>
                 <input type="text" id="order-datepicker" class="date-picker-input" placeholder="날짜 선택">
@@ -91,7 +92,8 @@ wms/templates/wms_app/dashboard.html
             <div class="chart-container">
                 <canvas id="dashboardOrderChart"></canvas>
             </div>
-        </div>
+        </a>
+        {# -------------------------------------------------------------------------------------- #}
 
         <a href="{% url 'stock_io' %}" class="menu-card">
             <h2><i class="fas fa-exchange-alt"></i>입출고</h2>
@@ -166,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(error => console.error('주문 차트 데이터 로딩 실패:', error));
     }
 
+    // DatePicker 초기화 코드는 그대로 유지
     if (window.initDatePicker) {
         window.initDatePicker('order-datepicker', updateOrderChart);
     } else {

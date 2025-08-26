@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>송장 출력</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        @page {
+            size: 100mm 150mm; /* 일반적인 택배 송장 용지 크기 */
+            margin: 5mm;
+        }
+        body {
+            font-family: 'Malgun Gothic', 'Dotum', sans-serif;
+            font-size: 9pt;
+            line-height: 1.4;
+        }
+        .invoice-box {
+            border: 2px solid #000;
+            padding: 3mm;
+            width: 90mm;
+            height: 140mm;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            page-break-inside: avoid;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        td, th {
+            border: 1px solid #000;
+            padding: 4px;
+            vertical-align: top;
+        }
+        .header-logo {
+            font-size: 16pt;
+            font-weight: bold;
+            text-align: center;
+            padding: 5px 0;
+            border-bottom: 2px solid #000;
+        }
+        .info-table td {
+            height: 50px;
+        }
+        .info-table .label {
+            font-weight: bold;
+            width: 20%;
+            text-align: center;
+            background-color: #f2f2f2;
+        }
+        .info-table .content {
+            padding-left: 10px;
+        }
+        .address {
+            font-size: 12pt;
+            font-weight: bold;
+        }
+        .items-table {
+            margin-top: 5px;
+        }
+        .items-table .label {
+            font-weight: bold;
+            text-align: center;
+            background-color: #f2f2f2;
+        }
+        .items-table .content {
+            font-size: 8pt;
+            padding: 3px;
+        }
+        .memo-box {
+            margin-top: 5px;
+            flex-grow: 1;
+        }
+        .memo-box td {
+            height: 100%;
+        }
+        .barcode-container {
+            text-align: center;
+            padding: 5px 0;
+        }
+        .barcode-container svg {
+            width: 100%;
+            height: 50px;
+        }
+    </style>
+</head>
+<body>
+    {% for order in orders %}
+    <div class="invoice-box">
+        <div class="header-logo">WMS 택배</div>
+        
+        <table class="info-table">
+            <tr>
+                <td class="label">보내는<br>사람</td>
+                <td class="content">
+                    {{ order.shipper.name }}<br>
+                    {{ order.shipper.center.address }}<br>
+                    TEL: {{ order.shipper.contact }}
+                </td>
+            </tr>
+            <tr>
+                <td class="label">받는<br>사람</td>
+                <td class="content">
+                    <span class="address">{{ order.address }}</span><br>
+                    <strong>{{ order.recipient_name }}</strong><br>
+                    TEL: {{ order.recipient_phone }}
+                </td>
+            </tr>
+        </table>
+
+        <table class="items-table">
+             <tr>
+                <td class="label" style="width: 20%;">상품명</td>
+                <td class="content">
+                    {% for item in order.items.all %}
+                        {{ item.product.name }} ({{ item.quantity }}개){% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+        </table>
+
+        <table class="memo-box">
+            <tr>
+                <td class="label" style="width: 20%;">배송<br>메시지</td>
+                <td class="content">{{ order.delivery_memo|default:"-" }}</td>
+            </tr>
+        </table>
+        
+        <div class="barcode-container">
+            <svg class="barcode"
+                jsbarcode-format="CODE128"
+                jsbarcode-value="{{ order.order_no }}"
+                jsbarcode-displayValue="true"
+                jsbarcode-fontSize="14"
+                jsbarcode-textmargin="2">
+            </svg>
+        </div>
+    </div>
+    {% endfor %}
+
+    <script type="text/javascript">
+        JsBarcode(".barcode").init();
+    </script>
+</body>
+</html>

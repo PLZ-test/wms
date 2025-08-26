@@ -15,19 +15,42 @@ from django.contrib.auth.views import LoginView
 from django.contrib import messages
 from .models import Center, Shipper, Courier, Product, Order, StockMovement, User, SalesChannel, OrderItem
 from .forms import (
-    CenterForm, ShipperForm, CourierForm, ProductForm, StockIOForm, 
+    CenterForm, ShipperForm, CourierForm, ProductForm, StockIOForm,
     StockUpdateForm, UserUpdateForm, CustomUserCreationForm, OrderUpdateForm
 )
 import openpyxl
+from django.views.decorators.http import require_POST
+import json
+
+
+# ----------------------------------------
+# 송장 출력 뷰
+# ----------------------------------------
+@login_required
+@require_POST
+def order_invoice_view(request):
+    order_ids_str = request.POST.get('order_ids', '')
+    if not order_ids_str:
+        return HttpResponse("출력할 주문이 선택되지 않았습니다.", status=400)
+
+    order_ids = [int(id) for id in order_ids_str.split(',')]
+    orders = Order.objects.filter(id__in=order_ids).select_related(
+        'shipper__center'
+    ).prefetch_related(
+        'items__product'
+    )
+    if not orders:
+        return HttpResponse("유효한 주문을 찾을 수 없습니다.", status=404)
+
+    context = {'orders': orders}
+    return render(request, 'wms_app/invoice_template.html', context)
+
 
 # ----------------------------------------
 # API 뷰
 # ----------------------------------------
 @login_required
 def channel_order_chart_data(request):
-    """
-    주문 관리 페이지의 '채널별 주문량' 원형 차트에 필요한 데이터를 JSON으로 반환하는 API 뷰입니다.
-    """
     channel_counts = SalesChannel.objects.annotate(order_count=Count('order')).values('name', 'order_count')
     labels = [data['name'] for data in channel_counts]
     data = [data['order_count'] for data in channel_counts]
@@ -35,16 +58,13 @@ def channel_order_chart_data(request):
 
 @login_required
 def order_list_api(request):
-    """
-    주문 목록 데이터를 JSON 형태로 반환하는 API 뷰입니다.
-    """
     status = request.GET.get('status')
     orders = Order.objects.all()
     if status == 'success':
         orders = orders.exclude(order_status='ERROR')
     elif status == 'error':
         orders = orders.filter(order_status='ERROR')
-    
+
     data = []
     for order in orders:
         items = [{'product_name': item.product.name, 'quantity': item.quantity} for item in order.items.all()]
@@ -58,9 +78,6 @@ def order_list_api(request):
     return JsonResponse({'orders': data})
 
 def check_username(request):
-    """
-    회원가입 시 사용자 아이디(username) 중복 여부를 실시간으로 확인하는 API 뷰입니다.
-    """
     username = request.GET.get('username', None)
     is_taken = User.objects.filter(username__iexact=username).exists()
     data = {'is_available': not is_taken}
@@ -68,56 +85,77 @@ def check_username(request):
 
 @login_required
 def order_chart_data(request):
-    """
-    대시보드의 '오늘' 주문 현황 데이터를 JSON으로 반환합니다.
-    - 주문 접수: 오늘 생성된 모든 주문
-    - 처리 성공: 오늘 주문 중 '오류'가 아닌 주문
-    - 처리 실패: 오늘 주문 중 '오류' 상태인 주문
-    """
-    today = date.today()
-    today_orders = Order.objects.filter(order_date__date=today)
-    
-    total_received = today_orders.count()
-    error_received = today_orders.filter(order_status='ERROR').count()
-    success_received = total_received - error_received
-    
-    return JsonResponse({
-        'labels': ['주문 접수', '처리 성공', '처리 실패'],
-        'data': [total_received, success_received, error_received],
-    })
+    start_date_str = request.GET.get('start')
+    end_date_str = request.GET.get('end')
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        end_date = date.today()
+        start_date = end_date - timedelta(days=6)
+
+    labels = []
+    current_date = start_date
+    while current_date <= end_date:
+        labels.append(current_date.strftime('%Y-%m-%d'))
+        current_date += timedelta(days=1)
+
+    orders = Order.objects.filter(order_date__date__range=[start_date, end_date]) \
+                           .annotate(date=TruncDate('order_date')) \
+                           .values('date', 'order_status') \
+                           .annotate(count=Count('id')) \
+                           .order_by('date')
+
+    status_map = dict(Order.ORDER_STATUS_CHOICES)
+    daily_counts = {label: {status: 0 for status in status_map} for label in labels}
+    for order in orders:
+        date_str = order['date'].strftime('%Y-%m-%d')
+        if date_str in daily_counts:
+            daily_counts[date_str][order['order_status']] = order['count']
+
+    status_colors = {
+        'PENDING': 'rgba(54, 162, 235, 0.7)', 'PROCESSING': 'rgba(255, 159, 64, 0.7)',
+        'SHIPPED': 'rgba(75, 192, 192, 0.7)', 'DELIVERED': 'rgba(153, 102, 255, 0.7)',
+        'CANCELED': 'rgba(100, 100, 100, 0.7)', 'ERROR': 'rgba(255, 99, 132, 0.7)',
+    }
+
+    final_datasets = []
+    for status_code, status_name in status_map.items():
+        data = [daily_counts[label][status_code] for label in labels]
+        if any(d > 0 for d in data):
+            final_datasets.append({
+                'label': status_name, 'data': data,
+                'borderColor': status_colors.get(status_code, 'rgba(0, 0, 0, 0.7)'),
+                'backgroundColor': status_colors.get(status_code, 'rgba(0, 0, 0, 0.7)'),
+                'fill': False, 'tension': 0.1
+            })
+
+    return JsonResponse({'labels': labels, 'datasets': final_datasets})
 
 @login_required
 def delivery_chart_data(request):
-    """
-    대시보드의 배송 현황 차트에 필요한 데이터를 JSON으로 반환하는 API 뷰입니다.
-    """
     data = {'집하완료': 12, '배송중': 8, '배송완료': 30}
     return JsonResponse(data)
 
-
 # ----------------------------------------
-# 인증 (로그인/로그아웃/회원가입) 뷰
+# 인증 뷰
 # ----------------------------------------
-
 def wms_logout_view(request):
     logout(request)
     return redirect('login')
 
-# --- [오류 해결] 누락되었던 CustomLoginView 클래스 ---
 class CustomLoginView(LoginView):
     template_name = 'registration/login.html'
-    
     def form_invalid(self, form):
         messages.error(self.request, '아이디 또는 비밀번호가 올바르지 않습니다.')
         return super().form_invalid(form)
-
     def form_valid(self, form):
         user = form.get_user()
         if not user.is_active:
             messages.error(self.request, '아직 승인되지 않은 계정입니다. 관리자에게 문의하세요.')
             return self.form_invalid(form)
         return super().form_valid(form)
-# --------------------------------------------------
 
 def signup_view(request):
     if request.method == 'POST':
@@ -132,21 +170,19 @@ def signup_view(request):
 def signup_done_view(request):
     return render(request, 'registration/signup_done.html')
 
-
 # ----------------------------------------
-# 페이지 렌더링 뷰 (함수 기반)
+# 페이지 렌더링 뷰
 # ----------------------------------------
 @login_required
 def dashboard(request):
     context = {'page_title': '홈', 'active_menu': 'dashboard'}
-    return render(request, 'wms_app/dashboard.html', context)
+    return render(request, 'wms_app/order_list_page.html', context)
 
 @login_required
 def order_manage(request):
     excel_result = request.session.get('excel_upload_result', None)
     context = {
-        'page_title': '주문 관리', 
-        'active_menu': 'orders',
+        'page_title': '주문 관리', 'active_menu': 'orders',
         'excel_result': excel_result,
     }
     return render(request, 'wms_app/order_manage.html', context)
@@ -154,23 +190,33 @@ def order_manage(request):
 @login_required
 def order_list_success(request):
     order_ids = request.session.get('success_order_ids', [])
-    orders = Order.objects.filter(id__in=order_ids)
+    orders = Order.objects.filter(id__in=order_ids).prefetch_related('items__product')
+    orders_json = []
+    for order in orders:
+        items = [{'product_name': item.product.name, 'quantity': item.quantity} for item in order.items.all()]
+        orders_json.append({'id': order.id, 'items': items})
+
     context = {
-        'page_title': '성공 주문 목록',
-        'orders': orders,
-        'list_type': 'success',
+        'page_title': '성공 주문 목록', 'orders': orders,
+        'list_type': 'success', 'orders_json': json.dumps(orders_json),
     }
-    return render(request, 'wms_app/order_list_page.html', context)
+    return render(request, 'wms_app/order_list_result.html', context)
 
 @login_required
 def order_list_error(request):
-    error_list = request.session.get('error_orders', [])
+    error_order_info = request.session.get('error_orders', [])
+    error_order_ids = [item['id'] for item in error_order_info if item.get('id')]
+    orders = Order.objects.filter(id__in=error_order_ids).prefetch_related('items__product')
+    orders_json = []
+    for order in orders:
+        items = [{'product_name': item.product.name, 'quantity': item.quantity} for item in order.items.all()]
+        orders_json.append({'id': order.id, 'items': items})
+
     context = {
-        'page_title': '오류 주문 목록',
-        'orders': error_list,
-        'list_type': 'error',
+        'page_title': '오류 주문 목록', 'orders': orders,
+        'list_type': 'error', 'orders_json': json.dumps(orders_json),
     }
-    return render(request, 'wms_app/order_list_page.html', context)
+    return render(request, 'wms_app/order_list_result.html', context)
 
 @login_required
 def order_update_view(request, order_pk):
@@ -183,22 +229,19 @@ def order_update_view(request, order_pk):
             updated_order.order_status = 'PENDING'
             updated_order.save()
             messages.success(request, f"주문({order.order_no})이 성공적으로 수정되었습니다.")
-            return redirect('order_list_error') 
+            return redirect('order_list_error')
     else:
         form = OrderUpdateForm(instance=order)
-    
+
     context = {
-        'page_title': '오류 주문 수정',
-        'form': form,
-        'order': order,
+        'page_title': '오류 주문 수정', 'form': form, 'order': order,
     }
     return render(request, 'wms_app/order_update_form.html', context)
 
 @login_required
 def management_dashboard(request):
     context = {
-        'page_title': '통합 관리',
-        'active_menu': 'management',
+        'page_title': '통합 관리', 'active_menu': 'management',
         'shipper_count': Shipper.objects.count(),
         'product_count': Product.objects.count(),
         'center_count': Center.objects.count(),
@@ -209,27 +252,20 @@ def management_dashboard(request):
 @login_required
 def stock_manage(request):
     queryset = Product.objects.select_related('shipper__center').all()
-    
     selected_center = request.session.get('selected_center')
     selected_shipper = request.session.get('selected_shipper')
-    
     if selected_center:
         queryset = queryset.filter(shipper__center__name=selected_center)
     if selected_shipper:
         queryset = queryset.filter(shipper__name=selected_shipper)
-        
     context = {
-        'page_title': '재고관리',
-        'object_list': queryset,
+        'page_title': '재고관리', 'object_list': queryset,
         'columns': [
-            {'header': '상품명', 'key': 'name'},
-            {'header': '크기(cm)', 'is_size': True},
-            {'header': '재고', 'key': 'quantity'},
-            {'header': '바코드', 'key': 'barcode'},
+            {'header': '상품명', 'key': 'name'}, {'header': '크기(cm)', 'is_size': True},
+            {'header': '재고', 'key': 'quantity'}, {'header': '바코드', 'key': 'barcode'},
             {'header': '화주사명', 'key': 'shipper'},
         ],
-        'active_menu': 'management',
-        'update_url_name': 'stock_update',
+        'active_menu': 'management', 'update_url_name': 'stock_update',
     }
     return render(request, 'wms_app/generic_list.html', context)
 
@@ -240,13 +276,11 @@ def stock_io_view(request):
         form_data = request.POST.copy()
         form_data['product'] = request.POST.get('product')
         form = StockIOForm(form_data)
-        
         if form.is_valid():
             product = form.cleaned_data['product']
             quantity = form.cleaned_data['quantity']
             memo = form.cleaned_data['memo']
             io_type = request.POST.get('io_type')
-
             if io_type == 'in':
                 product.quantity = F('quantity') + quantity
                 movement_type = 'IN'
@@ -256,15 +290,12 @@ def stock_io_view(request):
                     return HttpResponseBadRequest("재고가 부족합니다.")
                 product.quantity = F('quantity') - quantity
                 movement_type = 'OUT'
-            
             product.save()
-            
             StockMovement.objects.create(
                 product=product, movement_type=movement_type,
                 quantity=quantity, memo=memo
             )
             return redirect('stock_io')
-            
     products = Product.objects.select_related('shipper__center').all()
     selected_center = request.session.get('selected_center')
     selected_shipper = request.session.get('selected_shipper')
@@ -272,7 +303,6 @@ def stock_io_view(request):
         products = products.filter(shipper__center__name=selected_center)
     if selected_shipper:
         products = products.filter(shipper__name=selected_shipper)
-        
     context = {'page_title': '재고 입출고', 'products': products, 'active_menu': 'inout'}
     return render(request, 'wms_app/stock_io.html', context)
 
@@ -286,7 +316,6 @@ def stock_update(request, pk):
             return redirect('stock_manage')
     else:
         form = StockUpdateForm(instance=product)
-    
     context = {
         'form': form, 'product': product,
         'page_title': '재고 수량 수정', 'active_menu': 'management'
@@ -306,8 +335,7 @@ def stock_movement_history(request):
 def user_manage(request):
     user_list = User.objects.filter(is_superuser=False)
     context = {
-        'page_title': '사용자 관리',
-        'active_menu': 'management',
+        'page_title': '사용자 관리', 'active_menu': 'management',
         'user_list': user_list,
     }
     return render(request, 'wms_app/user_list.html', context)
@@ -322,7 +350,6 @@ def user_update(request, pk):
             return redirect('user_manage')
     else:
         form = UserUpdateForm(instance=user_instance)
-    
     context = {
         'form': form, 'target_user': user_instance,
         'page_title': '사용자 역할 및 소속 수정', 'active_menu': 'management',
@@ -352,6 +379,8 @@ def settlement_billing(request):
 @login_required
 def settlement_config(request):
     return render(request, 'wms_app/placeholder_page.html', {'page_title': '정산내역설정', 'active_menu': 'settlement'})
+
+# ... (이하 CBV 및 기타 뷰는 수정 없이 그대로 유지) ...
 
 # ----------------------------------------
 # 기준정보 관리 뷰 (클래스 기반)
@@ -403,7 +432,7 @@ class ShipperListView(LoginRequiredMixin, ListView):
     model = Shipper
     template_name = 'wms_app/generic_list.html'
     context_object_name = 'object_list'
-    
+
     def get_queryset(self):
         queryset = super().get_queryset().select_related('center')
         selected_center = self.request.session.get('selected_center')
@@ -581,11 +610,11 @@ def order_excel_upload(request):
 
     success_orders = []
     error_orders = []
-    
+
     for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
         if not any(row):
             continue
-        
+
         order_data = {
             'order_no': str(row[0]).strip() if row[0] else None,
             'shipper_name': str(row[1]).strip() if row[1] else None,
@@ -598,7 +627,7 @@ def order_excel_upload(request):
             'row_idx': row_idx,
             'error_message': ''
         }
-        
+
         try:
             if not all([order_data['shipper_name'], order_data['channel_name'], order_data['product_identifier'], order_data['quantity'] > 0]):
                 raise ValueError('필수 정보(화주사, 채널, 상품, 수량)가 누락되었습니다.')
@@ -606,7 +635,7 @@ def order_excel_upload(request):
             with transaction.atomic():
                 shipper = Shipper.objects.get(name=order_data['shipper_name'])
                 channel, _ = SalesChannel.objects.get_or_create(name=order_data['channel_name'])
-                
+
                 product = Product.objects.filter(
                     Q(barcode=order_data['product_identifier']) | Q(name=order_data['product_identifier']),
                     shipper=shipper
@@ -626,7 +655,7 @@ def order_excel_upload(request):
                         'order_status': 'PENDING'
                     }
                 )
-                
+
                 OrderItem.objects.create(order=order, product=product, quantity=order_data['quantity'])
                 success_orders.append(order)
 
@@ -657,7 +686,7 @@ def order_excel_upload(request):
         'error_count': len(error_orders),
     }
     request.session['success_order_ids'] = [order.id for order in success_orders]
-    
+
     error_order_data = []
     for item in error_orders:
         if isinstance(item, Order):
@@ -671,8 +700,8 @@ def order_excel_upload(request):
         else:
             item['id'] = None
             error_order_data.append(item)
-            
+
     request.session['error_orders'] = error_order_data
-    
+
     messages.info(request, "엑셀 파일 처리가 완료되었습니다. 결과를 확인하세요.")
     return redirect('order_manage')

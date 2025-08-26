@@ -2,10 +2,17 @@
 
 {% block content %}
 <div class="page-header">
+    {# --- [수정] '뒤로가기' 버튼을 왼쪽으로 이동시킵니다. --- #}
+    <div>
+        {# 이 버튼은 화주사 목록 페이지로 돌아갑니다. #}
+        <a href="{% url 'shipper_list' %}" class="btn btn-secondary">뒤로가기</a>
+    </div>
+    {# -------------------------------------------------- #}
+
     <h1>{{ page_title }}</h1>
     <div class="btn-group">
         <a href="{% url 'shipper_product_create' shipper.pk %}" class="btn btn-primary">상품 등록</a>
-        <a href="{% url 'shipper_list' %}" class="btn btn-secondary">뒤로가기</a>
+        {# 원래 여기에 있던 '뒤로가기' 버튼은 왼쪽으로 이동했습니다. #}
     </div>
 </div>
 
