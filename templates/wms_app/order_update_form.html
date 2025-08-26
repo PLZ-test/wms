@@ -1,0 +1,40 @@
+{% extends 'wms_app/base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+</div>
+
+<div class="form-container">
+    {# 읽기 전용 정보 표시 #}
+    <div class="form-group">
+        <label>주문번호:</label>
+        <input type="text" value="{{ order.order_no }}" class="form-control" readonly>
+    </div>
+    <div class="form-group">
+        <label>오류 원인:</label>
+        <textarea class="form-control" readonly rows="3" style="color: var(--danger-color);">{{ order.error_message }}</textarea>
+    </div>
+    <hr>
+    
+    {# 수정 가능한 폼 #}
+    <form id="main-form" method="post">
+        {% csrf_token %}
+        
+        {% for field in form %}
+        <div class="form-group">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+                <div class="error-list">{{ field.errors }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </form>
+    
+    <div class="form-actions">
+        <a href="{% url 'order_list_error' %}" class="btn btn-secondary">취소</a>
+        <button type="submit" class="btn btn-primary" form="main-form">수정 완료</button>
+    </div>
+</div>
+{% endblock %}

@@ -1,118 +1,157 @@
 {% extends 'wms_app/base.html' %}
 
 {% comment %}
-wms/templates/wms_app/dashboard.html
-- [수정 사항]
-- 1. 각 메뉴 카드의 세로 크기를 키우기 위해 내부 여백(padding)을 늘렸습니다.
-- 2. 그래프 영역(graph-placeholder)의 높이를 더 크게 조정했습니다.
-- [수정 2] '관리' 카드의 링크를 새로운 통합 관리 페이지로 변경했습니다.
+wms/templates/wms_app/management_dashboard.html
+- [수정] '정산 관리' 카드를 '상품 관리' 카드로 변경하고 아이콘 및 링크 수정
 {% endcomment %}
 
 {% block extra_head %}
-{# 이 페이지에서만 사용하는 스타일을 정의합니다. #}
 <style>
-    /* 메뉴 전체를 감싸고 중앙 정렬을 위한 컨테이너 */
-    .home-container {
+    .summary-section {
+        background-color: #fff;
+        padding: 24px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    .summary-section h3 {
+        margin: 0 0 16px 0;
+        font-size: 1.2em;
+        color: #333;
+    }
+    .summary-grid {
         display: flex;
         justify-content: center;
-        align-items: center;
-        padding: 5vh 20px;
-        min-height: calc(100vh - var(--header-height) - 40px);
-        box-sizing: border-box;
+        gap: 40px;
+        flex-wrap: wrap;
+    }
+    .summary-item {
+        font-size: 1.1em;
+        color: #555;
+    }
+    .summary-item strong {
+        font-size: 1.5em;
+        color: var(--accent-color);
+        margin-right: 8px;
     }
 
-    /* 메뉴 카드들을 담는 그리드 컨테이너 설정 */
-    .home-menu-grid {
+    .management-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: 30px;
-        width: 80%;
-        max-width: 1400px;
     }
-
-    /* 각 메뉴 카드를 <a> 태그로 만들어 클릭 가능하게 함 */
-    .menu-card {
+    .mgmt-card {
         background-color: #ffffff;
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.05);
         padding: 30px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
         transition: transform 0.2s, box-shadow 0.2s;
-        display: block;
-        text-decoration: none;
-        color: inherit;
+        min-height: 250px;
     }
-    .menu-card:hover {
+    .mgmt-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 6px 12px rgba(0,0,0,0.1);
     }
-
-    .graph-placeholder {
-        height: 220px;
-        background-color: #f3f4f6;
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #9ca3af;
-        font-size: 1em;
+    .mgmt-card-header {
+        text-align: center;
         margin-bottom: 20px;
     }
-
-    /* 주 메뉴 제목 스타일 */
-    .menu-card h2 {
-        font-size: 1.8em;
-        font-weight: bold;
-        color: #333;
+    .mgmt-card-icon {
+        font-size: 4em;
+        color: var(--accent-color);
+        margin-bottom: 15px;
+    }
+    .mgmt-card-header h2 {
         margin: 0;
+        font-size: 1.8em;
+        color: #333;
     }
-    .menu-card h2 i {
-        margin-right: 12px;
+    .mgmt-card-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end; /* 버튼을 오른쪽으로 정렬 */
     }
-    
-    /* 화면이 작아지면 1열로 변경 */
-    @media (max-width: 768px) {
-        .home-menu-grid {
-            grid-template-columns: 1fr;
-            width: 90%;
-            gap: 20px;
-        }
-        .home-container {
-            padding: 20px 10px;
-        }
+    .mgmt-card-actions .btn {
+        flex-grow: 1; /* 버튼이 공간을 채우도록 함 */
+        text-align: center;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class.page-header" style="display: none;">
-    <h1>홈</h1>
-</div>
-
-<div class="home-container">
-    <div class="home-menu-grid">
-        
-        <a href="{% url 'order_manage' %}" class="menu-card">
-            <h2><i class="fas fa-shopping-cart"></i>주문</h2>
-            <div class="graph-placeholder">(주문 현황 그래프 영역)</div>
-        </a>
-
-        <a href="{% url 'stock_io' %}" class="menu-card">
-            <h2><i class="fas fa-exchange-alt"></i>입출고</h2>
-            <div class="graph-placeholder">(일일 입출고량 그래프 영역)</div>
-        </a>
-
-        <a href="{% url 'settlement_status' %}" class="menu-card">
-            <h2><i class="fas fa-file-invoice-dollar"></i>정산</h2>
-            <div class="graph-placeholder">(월별 정산금액 그래프 영역)</div>
-        </a>
-
-        {# --- [수정] '관리' 카드의 링크를 stock_manage에서 management_dashboard로 변경 --- #}
-        <a href="{% url 'management_dashboard' %}" class="menu-card">
-            <h2><i class="fas fa-cog"></i>관리</h2>
-            <div class="graph-placeholder">(재고 현황 파이차트 영역)</div>
-        </a>
-        {# -------------------------------------------------------------------------- #}
-
+<div class="page-header">
+    <div>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">뒤로가기</a>
     </div>
+    <h1>통합 관리</h1>
+    <div class="btn-group"></div>
 </div>
+
+
+<section class="summary-section">
+    <h3>관리 현황 요약</h3>
+    <div class="summary-grid">
+        <div class="summary-item">총 화주사: <strong>{{ shipper_count }}</strong>곳</div>
+        <div class="summary-item">총 상품 수: <strong>{{ product_count }}</strong>개</div>
+        <div class="summary-item">총 센터: <strong>{{ center_count }}</strong>곳</div>
+        <div class="summary-item">계약 택배사: <strong>{{ courier_count }}</strong>곳</div>
+    </div>
+</section>
+
+<section class="management-grid">
+
+    <div class="mgmt-card">
+        <div class="mgmt-card-header">
+            <div class="mgmt-card-icon"><i class="fas fa-warehouse"></i></div>
+            <h2>센터 관리</h2>
+        </div>
+        <div class="mgmt-card-actions">
+             <a href="{% url 'center_create' %}" class="btn btn-primary">등록</a>
+             <a href="{% url 'center_list' %}" class="btn btn-info">목록 보기</a>
+        </div>
+    </div>
+
+    {# --- [수정] '정산 관리' 카드를 '상품 관리'로 변경 --- #}
+    <div class="mgmt-card">
+        <div class="mgmt-card-header">
+            {# 아이콘을 상품(box) 아이콘으로 변경 #}
+            <div class="mgmt-card-icon"><i class="fas fa-box"></i></div>
+            {# 제목을 '상품 관리'로 변경 #}
+            <h2>상품 관리</h2>
+        </div>
+        <div class="mgmt-card-actions">
+            {# 상품 등록은 화주사를 먼저 선택해야 하므로, 화주사 목록 페이지로 연결 #}
+            <a href="{% url 'shipper_list' %}" class="btn btn-primary">상품 등록하기</a>
+            {# 재고 현황 페이지로 연결 #}
+            <a href="{% url 'stock_manage' %}" class="btn btn-info">재고 현황 보기</a>
+        </div>
+    </div>
+    {# ---------------------------------------------------- #}
+
+    <div class="mgmt-card">
+        <div class="mgmt-card-header">
+            <div class="mgmt-card-icon"><i class="fas fa-building"></i></div>
+            <h2>화주사 관리</h2>
+        </div>
+        <div class="mgmt-card-actions">
+            <a href="{% url 'shipper_create' %}" class="btn btn-primary">등록</a>
+            <a href="{% url 'shipper_list' %}" class="btn btn-info">목록 보기</a>
+        </div>
+    </div>
+
+    <div class="mgmt-card">
+        <div class="mgmt-card-header">
+            <div class="mgmt-card-icon"><i class="fas fa-truck"></i></div>
+            <h2>택배사 관리</h2>
+        </div>
+        <div class="mgmt-card-actions">
+            <a href="{% url 'courier_create' %}" class="btn btn-primary">등록</a>
+            <a href="{% url 'courier_list' %}" class="btn btn-info">목록 보기</a>
+        </div>
+    </div>
+</section>
 {% endblock %}

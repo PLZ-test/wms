@@ -1,7 +1,6 @@
 /* static/css/wms/style.css */
 
 :root {
-    /* --- [삭제] 사이드바 너비 변수를 삭제했습니다. --- */
     --header-height: 60px;
     --main-bg-color: #f4f7f6;
     --sidebar-bg-color: #34495e; /* (이 변수는 현재 사용되지 않음) */
@@ -42,7 +41,7 @@ header {
     padding: 0 20px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     z-index: 1001;
-    justify-content: space-between; /* justify-content를 space-between으로 변경하여 오른쪽 요소를 끝으로 보냅니다. */
+    justify-content: space-between;
     gap: 20px;
 }
 
@@ -57,8 +56,6 @@ header {
     align-items: center;
     gap: 15px;
 }
-
-/* --- [삭제] .hamburger-icon 관련 스타일을 삭제했습니다. --- */
 
 .header-title {
     font-size: 24px;
@@ -80,35 +77,38 @@ header {
     background-color: #fff;
 }
 
-/* --- [삭제] .sidebar 및 하위 메뉴(.sidebar-menu 등) 관련 스타일 전체를 삭제했습니다. --- */
-
-/* --- [수정] 메인 콘텐츠 영역이 전체 너비를 사용하도록 수정 --- */
 .main-content {
     flex-grow: 1;
-    margin-left: 0; /* 왼쪽 마진을 0으로 변경 */
+    margin-left: 0;
     padding: calc(var(--header-height) + 20px) 20px 20px;
-    width: 100%;   /* 너비를 100%로 변경 */
+    width: 100%;
 }
-/* --- [삭제] .main-content.collapsed 관련 스타일을 삭제했습니다. --- */
 
-
+/* --- [수정] 페이지 헤더 레이아웃 변경 --- */
 .page-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: space-between; /* 양쪽 끝으로 요소 정렬 */
     align-items: center;
     margin-bottom: 20px;
-}
-
-/* (이하 다른 스타일은 기존과 동일) */
-.page-header .btn-group {
-    display: flex;
-    gap: 10px;
+    position: relative; /* 자식 요소(h1)의 absolute 위치 기준 */
+    height: 40px; /* 헤더 높이 고정 */
 }
 
 .page-header h1 {
     color: #333;
     margin: 0;
+    position: absolute; /* 절대 위치로 변경 */
+    left: 50%; /* 왼쪽에서 50% 지점 */
+    transform: translateX(-50%); /* 자신의 너비 50%만큼 왼쪽으로 이동하여 중앙 정렬 */
 }
+/* -------------------------------------- */
+
+
+.page-header .btn-group {
+    display: flex;
+    gap: 10px;
+}
+
 
 .btn {
     padding: 10px 20px;
@@ -120,6 +120,7 @@ header {
     transition: background-color 0.2s;
 }
 
+/* ...(이하 다른 CSS 코드는 모두 그대로 유지)... */
 .btn-primary {
     background-color: var(--accent-color);
 }

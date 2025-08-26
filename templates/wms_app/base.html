@@ -1,7 +1,6 @@
 {% comment %}
 wms/templates/wms_app/base.html
-- 이 파일은 WMS 시스템의 모든 페이지가 상속받는 기본 템플릿입니다.
-- 올바른 CSS 파일 경로를 다시 연결하여 디자인이 적용되도록 수정했습니다.
+- [수정] 로그아웃 버튼이 잘리지 않도록 오른쪽 여백 추가
 {% endcomment %}
 
 {% load static %}
@@ -18,30 +17,23 @@ wms/templates/wms_app/base.html
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
     
-    {# --- [수정] 올바른 CSS 파일 경로 --- #}
     <link rel="stylesheet" href="{% static 'css/wms/style.css' %}">
-    {# ------------------------------- #}
 
-    {# --- [추가] 헤더 타이틀 링크 스타일 --- #}
     <style>
         .header-title-link {
-            text-decoration: none; /* 밑줄 제거 */
-            color: inherit; /* 부모 요소의 글자색 상속 */
+            text-decoration: none;
+            color: inherit;
         }
     </style>
-    {# --------------------------------- #}
 
-    {# 자식 템플릿에서 추가적인 head 내용을 삽입할 수 있는 공간 #}
     {% block extra_head %}{% endblock %}
 </head>
 <body>
     <header>
         <div class="header-left">
-            {# --- [수정] h1 태그를 a 태그로 감싸 홈으로 가는 링크를 추가합니다 --- #}
             <a href="{% url 'dashboard' %}" class="header-title-link">
                 <h1 class="header-title">WMS</h1>
             </a>
-            {# ----------------------------------------------------------- #}
             <div class="header-filters">
                 <form id="filter-form" method="get" action="">
                     <select id="center-filter" name="center_filter" onchange="this.form.submit()">
@@ -59,7 +51,8 @@ wms/templates/wms_app/base.html
                 </form>
             </div>
         </div>
-        <div class="header-right">
+        {# --- [수정] header-right div에 오른쪽 여백(margin) 스타일 추가 --- #}
+        <div class="header-right" style="margin-right: 20px;">
             {% if user.is_authenticated %}
             <form method="post" action="{% url 'logout' %}" style="margin: 0;">
                 {% csrf_token %}

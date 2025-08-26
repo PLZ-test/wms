@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import Center, Shipper, Courier, Product, User
+# --- [수정] Order 모델을 import합니다. ---
+from .models import Center, Shipper, Courier, Product, User, Order
 
 # --- [추가] 회원가입 폼 ---
 class CustomUserCreationForm(UserCreationForm):
@@ -55,6 +56,30 @@ class ProductForm(forms.ModelForm):
             'length': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '세로'}),
             'height': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '높이'}),
         }
+
+# --- [신규] 오류 주문 수정을 위한 폼 ---
+class OrderUpdateForm(forms.ModelForm):
+    """
+    오류가 발생한 주문의 정보를 수정하기 위한 폼입니다.
+    수취인명, 연락처, 주소 필드만 수정 가능하도록 설정합니다.
+    """
+    class Meta:
+        model = Order
+        # 수정이 필요한 필드 목록
+        fields = ['recipient_name', 'recipient_phone', 'address']
+        # 각 필드에 대한 라벨(화면에 표시될 이름) 설정
+        labels = {
+            'recipient_name': '수취인명',
+            'recipient_phone': '연락처',
+            'address': '주소',
+        }
+        # HTML 폼 위젯 설정 (CSS 클래스 적용 등)
+        widgets = {
+            'recipient_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'recipient_phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'address': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+# ------------------------------------
 
 class StockIOForm(forms.Form):
     product = forms.ModelChoiceField(queryset=Product.objects.all(), label="상품 선택", empty_label="상품을 선택하세요")

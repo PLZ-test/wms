@@ -3,9 +3,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.db.models import Sum, F, Count, Q
-from datetime import datetime
+from datetime import datetime, date, timedelta
+from django.db.models.functions import TruncDate
 from django.db import transaction
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
@@ -13,23 +14,32 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView
 from django.contrib import messages
 from .models import Center, Shipper, Courier, Product, Order, StockMovement, User, SalesChannel, OrderItem
-from .forms import CenterForm, ShipperForm, CourierForm, ProductForm, StockIOForm, StockUpdateForm, UserUpdateForm, CustomUserCreationForm
+from .forms import (
+    CenterForm, ShipperForm, CourierForm, ProductForm, StockIOForm, 
+    StockUpdateForm, UserUpdateForm, CustomUserCreationForm, OrderUpdateForm
+)
 import openpyxl
 
 # ----------------------------------------
 # API 뷰
 # ----------------------------------------
+@login_required
+def channel_order_chart_data(request):
+    """
+    주문 관리 페이지의 '채널별 주문량' 원형 차트에 필요한 데이터를 JSON으로 반환하는 API 뷰입니다.
+    """
+    channel_counts = SalesChannel.objects.annotate(order_count=Count('order')).values('name', 'order_count')
+    labels = [data['name'] for data in channel_counts]
+    data = [data['order_count'] for data in channel_counts]
+    return JsonResponse({'labels': labels, 'data': data})
 
 @login_required
 def order_list_api(request):
     """
     주문 목록 데이터를 JSON 형태로 반환하는 API 뷰입니다.
-    JavaScript에서 이 API를 호출하여 주문 관리 페이지의 테이블을 동적으로 구성합니다.
-    URL 파라미터(status)에 따라 '성공' 또는 '오류' 주문을 필터링합니다.
     """
     status = request.GET.get('status')
     orders = Order.objects.all()
-
     if status == 'success':
         orders = orders.exclude(order_status='ERROR')
     elif status == 'error':
@@ -39,14 +49,11 @@ def order_list_api(request):
     for order in orders:
         items = [{'product_name': item.product.name, 'quantity': item.quantity} for item in order.items.all()]
         data.append({
-            'id': order.id,
-            'order_no': order.order_no,
+            'id': order.id, 'order_no': order.order_no,
             'shipper': order.shipper.name if order.shipper else '-',
             'channel': order.channel.name if order.channel else '-',
-            'recipient': order.recipient_name,
-            'status': order.get_order_status_display(),
-            'error_message': order.error_message,
-            'items': items,
+            'recipient': order.recipient_name, 'status': order.get_order_status_display(),
+            'error_message': order.error_message, 'items': items,
         })
     return JsonResponse({'orders': data})
 
@@ -62,34 +69,21 @@ def check_username(request):
 @login_required
 def order_chart_data(request):
     """
-    대시보드의 주문 현황 차트에 필요한 데이터를 기간별로 조회하여 JSON으로 반환하는 API 뷰입니다.
+    대시보드의 '오늘' 주문 현황 데이터를 JSON으로 반환합니다.
+    - 주문 접수: 오늘 생성된 모든 주문
+    - 처리 성공: 오늘 주문 중 '오류'가 아닌 주문
+    - 처리 실패: 오늘 주문 중 '오류' 상태인 주문
     """
-    start_date_str = request.GET.get('start')
-    end_date_str = request.GET.get('end')
-
-    if not start_date_str or not end_date_str:
-        return JsonResponse({'error': 'Date range not provided'}, status=400)
-
-    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-
-    orders = Order.objects.filter(order_date__date__range=[start_date, end_date])
-    status_counts = orders.values('order_status').annotate(count=Count('id'))
+    today = date.today()
+    today_orders = Order.objects.filter(order_date__date=today)
     
-    data = {'주문접수': 0, '처리중': 0, '출고완료': 0, '배송완료': 0, '주문취소':0, '오류':0}
-    status_map = {
-        'PENDING': '주문접수', 'PROCESSING': '처리중', 'SHIPPED': '출고완료',
-        'DELIVERED': '배송완료', 'CANCELED': '주문취소', 'ERROR': '오류'
-    }
-
-    for item in status_counts:
-        status_key = status_map.get(item['order_status'])
-        if status_key:
-            data[status_key] = item['count']
-
+    total_received = today_orders.count()
+    error_received = today_orders.filter(order_status='ERROR').count()
+    success_received = total_received - error_received
+    
     return JsonResponse({
-        'labels': list(data.keys()),
-        'data': list(data.values()),
+        'labels': ['주문 접수', '처리 성공', '처리 실패'],
+        'data': [total_received, success_received, error_received],
     })
 
 @login_required
@@ -109,6 +103,7 @@ def wms_logout_view(request):
     logout(request)
     return redirect('login')
 
+# --- [오류 해결] 누락되었던 CustomLoginView 클래스 ---
 class CustomLoginView(LoginView):
     template_name = 'registration/login.html'
     
@@ -122,6 +117,7 @@ class CustomLoginView(LoginView):
             messages.error(self.request, '아직 승인되지 않은 계정입니다. 관리자에게 문의하세요.')
             return self.form_invalid(form)
         return super().form_valid(form)
+# --------------------------------------------------
 
 def signup_view(request):
     if request.method == 'POST':
@@ -140,7 +136,6 @@ def signup_done_view(request):
 # ----------------------------------------
 # 페이지 렌더링 뷰 (함수 기반)
 # ----------------------------------------
-
 @login_required
 def dashboard(request):
     context = {'page_title': '홈', 'active_menu': 'dashboard'}
@@ -148,17 +143,59 @@ def dashboard(request):
 
 @login_required
 def order_manage(request):
-    context = {'page_title': '주문 관리', 'active_menu': 'orders'}
+    excel_result = request.session.get('excel_upload_result', None)
+    context = {
+        'page_title': '주문 관리', 
+        'active_menu': 'orders',
+        'excel_result': excel_result,
+    }
     return render(request, 'wms_app/order_manage.html', context)
 
-# --- [신규] 통합 관리 페이지를 위한 뷰 함수 ---
+@login_required
+def order_list_success(request):
+    order_ids = request.session.get('success_order_ids', [])
+    orders = Order.objects.filter(id__in=order_ids)
+    context = {
+        'page_title': '성공 주문 목록',
+        'orders': orders,
+        'list_type': 'success',
+    }
+    return render(request, 'wms_app/order_list_page.html', context)
+
+@login_required
+def order_list_error(request):
+    error_list = request.session.get('error_orders', [])
+    context = {
+        'page_title': '오류 주문 목록',
+        'orders': error_list,
+        'list_type': 'error',
+    }
+    return render(request, 'wms_app/order_list_page.html', context)
+
+@login_required
+def order_update_view(request, order_pk):
+    order = get_object_or_404(Order, pk=order_pk)
+    if request.method == 'POST':
+        form = OrderUpdateForm(request.POST, instance=order)
+        if form.is_valid():
+            updated_order = form.save(commit=False)
+            updated_order.error_message = ""
+            updated_order.order_status = 'PENDING'
+            updated_order.save()
+            messages.success(request, f"주문({order.order_no})이 성공적으로 수정되었습니다.")
+            return redirect('order_list_error') 
+    else:
+        form = OrderUpdateForm(instance=order)
+    
+    context = {
+        'page_title': '오류 주문 수정',
+        'form': form,
+        'order': order,
+    }
+    return render(request, 'wms_app/order_update_form.html', context)
+
 @login_required
 def management_dashboard(request):
-    """
-    정산, 센터, 화주사, 택배사 등 각종 관리 기능을 모아 보여주는
-    통합 관리 대시보드 페이지를 렌더링합니다.
-    """
-    # 상단에 표시할 요약 정보를 계산합니다.
     context = {
         'page_title': '통합 관리',
         'active_menu': 'management',
@@ -168,7 +205,6 @@ def management_dashboard(request):
         'courier_count': Courier.objects.count(),
     }
     return render(request, 'wms_app/management_dashboard.html', context)
-# -----------------------------------------
 
 @login_required
 def stock_manage(request):
@@ -293,7 +329,6 @@ def user_update(request, pk):
     }
     return render(request, 'wms_app/user_form.html', context)
 
-# --- [임시] 기능 개발 예정 페이지 ---
 @login_required
 def order_manage_new(request):
     return render(request, 'wms_app/placeholder_page.html', {'page_title': '주문 관리', 'active_menu': 'management'})
@@ -529,145 +564,115 @@ def filters(request):
     }
 
 # ----------------------------------------
-# 엑셀 주문 등록 뷰 (디버깅 코드가 추가된 최종 수정본)
+# 엑셀 주문 등록 뷰
 # ----------------------------------------
-
 @login_required
 def order_excel_upload(request):
-    """
-    엑셀 파일을 업로드 받아 주문을 일괄 등록하는 뷰입니다.
-    """
-    if request.method == 'POST':
-        excel_file = request.FILES.get('excel_file')
-        if not excel_file:
-            messages.error(request, '엑셀 파일을 선택해주세요.')
-            return redirect('order_manage')
-        
-        # --- [디버깅용 코드] ---
-        print("--- [DEBUG] 엑셀 파일 업로드 시작 ---")
-        # --------------------
-
-        try:
-            wb = openpyxl.load_workbook(excel_file, data_only=True)
-            sheet = wb.active
-            
-            orders_data = {}
-            new_orders_to_create = []
-
-            print(f"--- [DEBUG] 총 {sheet.max_row - 1}개의 데이터 행을 읽기 시작합니다. ---")
-
-            for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
-                if not any(row):
-                    continue
-
-                # --- [디버깅용 코드] ---
-                print(f"--- [DEBUG] {row_idx}번째 행 데이터: {row} ---")
-                # --------------------
-
-                order_no = str(row[0]).strip() if row[0] else None
-                shipper_name = str(row[1]).strip() if row[1] else None
-                channel_name = str(row[2]).strip() if row[2] else None
-                recipient_name = str(row[3]).strip() if row[3] else None
-                recipient_phone = str(row[4]).strip() if row[4] else ''
-                address = str(row[5]).strip() if row[5] else ''
-                product_identifier = str(row[6]).strip() if row[6] else None
-                quantity = int(row[7]) if row[7] else 0
-
-                if not all([shipper_name, channel_name, product_identifier, quantity > 0]):
-                    messages.warning(request, f'{row_idx}번째 행의 필수 정보(화주사, 채널, 상품, 수량)가 누락되어 건너뜁니다.')
-                    continue
-
-                item_info = {'product_identifier': product_identifier, 'quantity': quantity, 'row_idx': row_idx}
-                
-                if order_no:
-                    if order_no not in orders_data:
-                        orders_data[order_no] = {
-                            'shipper_name': shipper_name, 'channel_name': channel_name,
-                            'recipient_name': recipient_name, 'recipient_phone': recipient_phone, 'address': address,
-                            'items': []
-                        }
-                    orders_data[order_no]['items'].append(item_info)
-                else:
-                    new_orders_to_create.append({
-                        'shipper_name': shipper_name, 'channel_name': channel_name,
-                        'recipient_name': recipient_name, 'recipient_phone': recipient_phone, 'address': address,
-                        'item': item_info
-                    })
-            
-            print("--- [DEBUG] 엑셀 파일 파싱 완료. 데이터베이스 저장을 시작합니다. ---")
-
-            with transaction.atomic():
-                def find_product(identifier, shipper, row_idx):
-                    product_query = Product.objects.filter(
-                        Q(barcode=identifier) | Q(name=identifier),
-                        shipper=shipper
-                    )
-                    
-                    print(f"--- [DEBUG] '{identifier}' 상품 조회 시도... (화주사: {shipper.name}) ---")
-                    
-                    if product_query.count() == 1:
-                        product = product_query.first()
-                        print(f"--- [DEBUG] 상품 찾음: {product.name} ---")
-                        return product
-                    elif product_query.count() > 1:
-                        raise Exception(f"{row_idx}번째 행의 상품 '{identifier}'이(가) 해당 화주사에 여러 개 존재하여 특정할 수 없습니다.")
-                    else:
-                        raise Product.DoesNotExist(f"{row_idx}번째 행의 상품 '{identifier}'을(를) 찾을 수 없습니다.")
-
-                # 주문번호가 있는 주문들 처리
-                for order_no, data in orders_data.items():
-                    shipper = get_object_or_404(Shipper, name=data['shipper_name'])
-                    channel, _ = SalesChannel.objects.get_or_create(name=data['channel_name'])
-                    
-                    order, created = Order.objects.get_or_create(
-                        shipper=shipper, order_no=order_no,
-                        defaults={
-                            'channel': channel, 'recipient_name': data['recipient_name'],
-                            'recipient_phone': data['recipient_phone'], 'address': data['address'],
-                            'order_date': datetime.now(), 'order_status': 'PENDING'
-                        }
-                    )
-                    
-                    if created:
-                        print(f"--- [DEBUG] 주문 생성됨: {order.order_no} ---")
-                        for item_data in data['items']:
-                            product = find_product(item_data['product_identifier'], shipper, item_data['row_idx'])
-                            OrderItem.objects.create(order=order, product=product, quantity=item_data['quantity'])
-
-                # 주문번호가 없는 신규 주문들 처리
-                for data in new_orders_to_create:
-                    shipper = get_object_or_404(Shipper, name=data['shipper_name'])
-                    channel, _ = SalesChannel.objects.get_or_create(name=data['channel_name'])
-                    
-                    order = Order.objects.create(
-                        shipper=shipper,
-                        channel=channel,
-                        recipient_name=data['recipient_name'],
-                        recipient_phone=data['recipient_phone'],
-                        address=data['address'],
-                        order_date=datetime.now(),
-                        order_status='PENDING'
-                    )
-                    print(f"--- [DEBUG] 신규 주문 생성됨 (자동번호): {order.order_no} ---")
-                    
-                    product = find_product(data['item']['product_identifier'], shipper, data['item']['row_idx'])
-                    OrderItem.objects.create(order=order, product=product, quantity=data['item']['quantity'])
-            
-            total_created_count = len(orders_data) + len(new_orders_to_create)
-            if total_created_count > 0:
-                messages.success(request, f'{total_created_count}개의 주문이 성공적으로 등록되었습니다.')
-            print("--- [DEBUG] 모든 작업이 성공적으로 완료되었습니다. ---")
-
-        except Exception as e:
-            # --- [디버깅용 코드] ---
-            print(f"!!!!!!!!!!!!!!! [ERROR] !!!!!!!!!!!!!!!")
-            print(f"엑셀 업로드 중 오류가 발생했습니다: {e}")
-            import traceback
-            traceback.print_exc() # 상세한 오류 내역 출력
-            print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            # --------------------
-            messages.error(request, f'주문 등록 중 오류 발생: {e}')
-
+    if request.method != 'POST':
         return redirect('order_manage')
 
+    excel_file = request.FILES.get('excel_file')
+    if not excel_file:
+        messages.error(request, '엑셀 파일을 선택해주세요.')
+        return redirect('order_manage')
+
+    wb = openpyxl.load_workbook(excel_file, data_only=True)
+    sheet = wb.active
+
+    success_orders = []
+    error_orders = []
+    
+    for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+        if not any(row):
+            continue
+        
+        order_data = {
+            'order_no': str(row[0]).strip() if row[0] else None,
+            'shipper_name': str(row[1]).strip() if row[1] else None,
+            'channel_name': str(row[2]).strip() if row[2] else None,
+            'recipient_name': str(row[3]).strip() if row[3] else None,
+            'recipient_phone': str(row[4]).strip() if row[4] else '',
+            'address': str(row[5]).strip() if row[5] else '',
+            'product_identifier': str(row[6]).strip() if row[6] else None,
+            'quantity': int(row[7]) if row[7] else 0,
+            'row_idx': row_idx,
+            'error_message': ''
+        }
+        
+        try:
+            if not all([order_data['shipper_name'], order_data['channel_name'], order_data['product_identifier'], order_data['quantity'] > 0]):
+                raise ValueError('필수 정보(화주사, 채널, 상품, 수량)가 누락되었습니다.')
+
+            with transaction.atomic():
+                shipper = Shipper.objects.get(name=order_data['shipper_name'])
+                channel, _ = SalesChannel.objects.get_or_create(name=order_data['channel_name'])
+                
+                product = Product.objects.filter(
+                    Q(barcode=order_data['product_identifier']) | Q(name=order_data['product_identifier']),
+                    shipper=shipper
+                ).first()
+                if not product:
+                    raise Product.DoesNotExist(f"상품 '{order_data['product_identifier']}'을(를) 찾을 수 없습니다.")
+
+                order, created = Order.objects.get_or_create(
+                    order_no=order_data['order_no'],
+                    shipper=shipper,
+                    defaults={
+                        'channel': channel,
+                        'recipient_name': order_data['recipient_name'],
+                        'recipient_phone': order_data['recipient_phone'],
+                        'address': order_data['address'],
+                        'order_date': datetime.now(),
+                        'order_status': 'PENDING'
+                    }
+                )
+                
+                OrderItem.objects.create(order=order, product=product, quantity=order_data['quantity'])
+                success_orders.append(order)
+
+        except Exception as e:
+            order_data['error_message'] = str(e)
+            try:
+                shipper = Shipper.objects.get(name=order_data['shipper_name'])
+                channel, _ = SalesChannel.objects.get_or_create(name=order_data['channel_name'])
+                error_order_obj = Order.objects.create(
+                    order_no=order_data['order_no'] or f"ERROR-{datetime.now().strftime('%Y%m%d%H%M%S')}-{row_idx}",
+                    shipper=shipper,
+                    channel=channel,
+                    recipient_name=order_data['recipient_name'],
+                    recipient_phone=order_data['recipient_phone'],
+                    address=order_data['address'],
+                    order_date=datetime.now(),
+                    order_status='ERROR',
+                    error_message=str(e)
+                )
+                error_orders.append(error_order_obj)
+            except Exception as creation_error:
+                order_data['error_message'] += f" / [오류 주문 저장 실패: {creation_error}]"
+                error_orders.append(order_data)
+
+    request.session['excel_upload_result'] = {
+        'total': len(success_orders) + len(error_orders),
+        'success_count': len(success_orders),
+        'error_count': len(error_orders),
+    }
+    request.session['success_order_ids'] = [order.id for order in success_orders]
+    
+    error_order_data = []
+    for item in error_orders:
+        if isinstance(item, Order):
+            error_order_data.append({
+                'id': item.id,
+                'order_no': item.order_no,
+                'shipper_name': item.shipper.name if item.shipper else '-',
+                'recipient_name': item.recipient_name,
+                'error_message': item.error_message,
+            })
+        else:
+            item['id'] = None
+            error_order_data.append(item)
+            
+    request.session['error_orders'] = error_order_data
+    
+    messages.info(request, "엑셀 파일 처리가 완료되었습니다. 결과를 확인하세요.")
     return redirect('order_manage')

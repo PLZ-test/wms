@@ -2,6 +2,7 @@
 
 {% block content %}
 <div class="page-header">
+    {# --- [수정] 제목이 중앙에 오도록 h1 태그만 남깁니다. --- #}
     <h1>{{ page_title }}</h1>
 </div>
 
@@ -18,11 +19,14 @@
             {% endif %}
         </div>
         {% endfor %}
-    </form> <div class="form-actions">
+    </form>
+    
+    <div class="form-actions">
+        {# --- [수정] '취소' 버튼을 누르면 이전 페이지로 돌아가도록 링크 수정 --- #}
         <a href="{{ request.META.HTTP_REFERER|default:'/' }}" class="btn btn-secondary">취소</a>
         
         {% if object %}
-        <form action="{% url delete_url_name object.pk %}" method="post" style="display: inline;" onsubmit="return confirm('정말로 삭제하시겠습니까?');">
+        <form action="{% if delete_url_name %}{% url delete_url_name object.pk %}{% endif %}" method="post" style="display: inline;" onsubmit="return confirm('정말로 삭제하시겠습니까?');">
             {% csrf_token %}
             <button type="submit" class="btn btn-danger">삭제</button>
         </form>

@@ -1,15 +1,14 @@
 {% extends 'wms_app/base.html' %}
 
 {% comment %}
-wms/templates/wms_app/order_manage.html
-- [수정] JavaScript 부분을 추가하여 API를 통해 실제 주문 데이터를 불러와 표시하도록 구현했습니다.
-- [수정 2] '채널별 주문량', '성공', '오류' 박스의 너비를 일치시키기 위해 CSS Grid 레이아웃을 적용했습니다.
-- [수정 3] '엑셀 주문 등록' 버튼을 '수기 등록'으로 변경하고, 파일 업로드 기능을 추가했습니다.
+- [수정] 페이지 헤더 레이아웃을 '뒤로가기 | 중앙 제목 | 기능 버튼' 구조로 변경
 {% endcomment %}
 
 {% block extra_head %}
 <style>
-    /* (기존 스타일과 동일) */
+    /* '채널별 주문량' 그래프와 카드 레이아웃에 관련된 스타일입니다.
+    이전과 동일하며 변경 사항 없습니다.
+    */
     .order-manage-container {
         display: flex;
         flex-direction: column;
@@ -37,41 +36,51 @@ wms/templates/wms_app/order_manage.html
         font-size: 1.2em;
         color: #333;
     }
-    .graph-placeholder-large {
-        height: 200px;
-        background-color: #f3f4f6;
-        border-radius: 6px;
+    .chart-container {
+        position: relative;
+        height: 250px;
+        width: 100%;
     }
     .status-card {
         background-color: #fff;
         padding: 24px;
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-        cursor: pointer;
         border: 2px solid transparent;
         transition: border-color 0.2s, box-shadow 0.2s;
         text-align: center;
-        display: flex;
-        flex-direction: column;
+        display: block;
+        text-decoration: none;
+        color: inherit;
     }
     .status-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 6px 12px rgba(0,0,0,0.1);
     }
-    .status-card.active {
-        border-color: var(--accent-color);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    .status-card h4 {
-        margin: 0 0 15px 0;
-        font-size: 1.5em;
-        color: #333;
-    }
-    .graphic-placeholder-small {
+    .status-card.success:hover { border-color: var(--accent-color); }
+    .status-card.error:hover { border-color: var(--danger-color); }
+    .status-card-content {
         height: 120px;
-        background-color: #f3f4f6;
-        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
     }
+    .status-card-content .count {
+        font-size: 1.1em;
+        margin: 0;
+    }
+    .status-card-content .percentage {
+        font-size: 2.5em;
+        font-weight: bold;
+        margin: 5px 0;
+    }
+    .status-card-content .label {
+        margin: 0;
+        color: #666;
+    }
+    .percentage-success { color: var(--accent-color); }
+    .percentage-error { color: var(--danger-color); }
     .auto-toggle-container { display: flex; align-items: center; gap: 10px; }
     .auto-toggle-label { font-weight: bold; font-size: 1.1em; color: #555; }
     .toggle-switch { position: relative; display: inline-block; width: 60px; height: 34px; }
@@ -80,44 +89,22 @@ wms/templates/wms_app/order_manage.html
     .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
     input:checked + .slider { background-color: var(--accent-color); }
     input:checked + .slider:before { transform: translateX(26px); }
-    .order-list-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-    }
-    .order-list-table th, .order-list-table td {
-        border-bottom: 1px solid #dee2e6;
-        padding: 12px 8px;
-        text-align: left;
-    }
-    .order-list-table th {
-        font-weight: bold;
-        background-color: #f8f9fa;
-    }
-    .error-reason {
-        color: var(--danger-color);
-        font-size: 0.9em;
-        font-weight: bold;
-    }
-    .list-section {
-        width: 80%;
-        max-width: 1200px;
-        margin: 0 auto;
-    }
 </style>
 {% endblock %}
 
 {% block content %}
+{# --- [수정] 페이지 헤더 구조 변경 --- #}
 <div class="page-header">
+    <div>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">뒤로가기</a>
+    </div>
     <h1>주문 관리</h1>
     <div class="btn-group">
-        {# --- [수정] 엑셀 업로드 폼과 버튼 --- #}
         <form id="excel-upload-form" action="{% url 'order_excel_upload' %}" method="post" enctype="multipart/form-data" style="display: none;">
             {% csrf_token %}
             <input type="file" id="excel-file-input" name="excel_file" accept=".xlsx, .xls">
         </form>
         <button id="excel-upload-btn" class="btn btn-primary">수기 등록</button>
-        {# --------------------------------- #}
         <div class="auto-toggle-container">
             <span class="auto-toggle-label">AUTO</span>
             <label class="toggle-switch">
@@ -127,118 +114,116 @@ wms/templates/wms_app/order_manage.html
         </div>
     </div>
 </div>
+{# ----------------------------------- #}
 
 <div class="order-manage-container">
     <div class="order-grid-layout">
         <section class="top-stat-card">
             <h3>채널별 주문량</h3>
-            <div class="graph-placeholder-large"></div>
+            <div class="chart-container">
+                <canvas id="channelOrderChart"></canvas>
+            </div>
         </section>
-
-        <div class="status-card active" data-tab="success">
-            <h4>성공 <span id="success-count">(0건)</span></h4>
-            <div class="graphic-placeholder-small"></div>
-        </div>
-        <div class="status-card" data-tab="error">
-            <h4>오류 <span id="error-count">(0건)</span></h4>
-            <div class="graphic-placeholder-small"></div>
-        </div>
+        
+        {% if excel_result %}
+            <a href="{% url 'order_list_success' %}" class="status-card success">
+                <h4>성공 주문 보기</h4>
+                <div class="status-card-content">
+                    <p class="count">총 {{ excel_result.success_count }} 건</p>
+                    <h2 class="percentage percentage-success" id="success-percentage">0%</h2>
+                    <p class="label">성공률</p>
+                </div>
+            </a>
+            <a href="{% url 'order_list_error' %}" class="status-card error">
+                <h4>오류 주문 보기</h4>
+                <div class="status-card-content">
+                    <p class="count">총 {{ excel_result.error_count }} 건</p>
+                    <h2 class="percentage percentage-error" id="error-percentage">0%</h2>
+                    <p class="label">실패율</p>
+                </div>
+            </a>
+        {% else %}
+            <a href="#" class="status-card success" style="cursor: not-allowed; opacity: 0.6;">
+                <h4>성공 주문 보기</h4>
+                <div class="status-card-content">
+                    <div class="graph-placeholder-large" style="height: 100%; width: 100%; background-color: #f3f4f6; border-radius: 6px;"></div>
+                </div>
+            </a>
+            <a href="#" class="status-card error" style="cursor: not-allowed; opacity: 0.6;">
+                <h4>오류 주문 보기</h4>
+                <div class="status-card-content">
+                    <div class="graph-placeholder-large" style="height: 100%; width: 100%; background-color: #f3f4f6; border-radius: 6px;"></div>
+                </div>
+            </a>
+        {% endif %}
     </div>
-
-    <section class="list-section">
-        <div id="tab-success" class="list-pane active">
-        </div>
-        <div id="tab-error" class="list-pane">
-        </div>
-    </section>
 </div>
+
+{% if excel_result %}
+    {{ excel_result|json_script:"excel-data" }}
+{% endif %}
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- (기존 JavaScript 코드는 변경 없음) ---
-    const statusCards = document.querySelectorAll('.status-card');
-    const successPane = document.getElementById('tab-success');
-    const errorPane = document.getElementById('tab-error');
-    const successCountEl = document.getElementById('success-count');
-    const errorCountEl = document.getElementById('error-count');
-
-    function loadOrders(status) {
-        const targetPane = status === 'success' ? successPane : errorPane;
-        targetPane.innerHTML = '<p>목록을 불러오는 중...</p>';
-        fetch(`/api/orders/?status=${status}`)
-            .then(response => response.json())
-            .then(data => {
-                const orders = data.orders;
-                if (status === 'success') {
-                    successCountEl.textContent = `(${orders.length}건)`;
-                } else {
-                    errorCountEl.textContent = `(${orders.length}건)`;
-                }
-                if (orders.length === 0) {
-                    targetPane.innerHTML = `<p>해당하는 주문이 없습니다.</p>`;
-                    return;
-                }
-                let tableHTML = `
-                    <table class="order-list-table">
-                        <thead>
-                            <tr>
-                                <th>주문번호</th><th>화주사</th><th>채널</th><th>수취인</th><th>상태</th>
-                                ${status === 'error' ? '<th>오류 원인</th>' : ''}
-                                <th>작업</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-                orders.forEach(order => {
-                    tableHTML += `
-                        <tr>
-                            <td>${order.order_no}</td><td>${order.shipper}</td><td>${order.channel}</td><td>${order.recipient}</td><td>${order.status}</td>
-                            ${status === 'error' ? `<td class="error-reason">${order.error_message || '-'}</td>` : ''}
-                            <td>
-                                <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;">상세</button>
-                                ${status === 'error' ? `<button class="btn btn-primary" style="padding: 5px 10px; font-size: 12px; margin-left: 5px;">수정</button>` : ''}
-                            </td>
-                        </tr>`;
-                });
-                tableHTML += '</tbody></table>';
-                targetPane.innerHTML = tableHTML;
-            })
-            .catch(error => {
-                console.error('Error fetching orders:', error);
-                targetPane.innerHTML = `<p style="color:red;">목록을 불러오는 중 오류가 발생했습니다.</p>`;
-            });
-    }
-
-    statusCards.forEach(card => {
-        card.addEventListener('click', () => {
-            const tabId = card.dataset.tab;
-            statusCards.forEach(c => c.classList.remove('active'));
-            card.classList.add('active');
-            document.querySelectorAll('.list-pane').forEach(p => p.classList.remove('active'));
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-            loadOrders(tabId);
-        });
-    });
-
-    loadOrders('success');
-
-    // --- [신규] 엑셀 업로드 버튼 관련 JavaScript ---
     const uploadBtn = document.getElementById('excel-upload-btn');
     const fileInput = document.getElementById('excel-file-input');
     const uploadForm = document.getElementById('excel-upload-form');
+    uploadBtn.addEventListener('click', () => { fileInput.click(); });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length > 0) { uploadForm.submit(); } });
 
-    // '수기 등록' 버튼 클릭 시 숨겨진 파일 입력 필드를 클릭
-    uploadBtn.addEventListener('click', () => {
-        fileInput.click();
-    });
-
-    // 파일이 선택되면 자동으로 폼을 제출
-    fileInput.addEventListener('change', () => {
-        if (fileInput.files.length > 0) {
-            uploadForm.submit();
+    const excelDataElement = document.getElementById('excel-data');
+    if (excelDataElement) {
+        const excel_result = JSON.parse(excelDataElement.textContent);
+        const total = excel_result.total;
+        const successCount = excel_result.success_count;
+        const errorCount = excel_result.error_count;
+        const successPercentageEl = document.getElementById('success-percentage');
+        const errorPercentageEl = document.getElementById('error-percentage');
+        if (total > 0) {
+            const successPercent = ((successCount / total) * 100).toFixed(1);
+            const errorPercent = ((errorCount / total) * 100).toFixed(1);
+            if (successPercentageEl) successPercentageEl.textContent = `${successPercent}%`;
+            if (errorPercentageEl) errorPercentageEl.textContent = `${errorPercent}%`;
         }
-    });
+    }
+
+    const ctx = document.getElementById('channelOrderChart');
+    if (ctx) {
+        fetch("{% url 'channel_order_chart_data' %}")
+            .then(response => response.json())
+            .then(chartData => {
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: [{
+                            label: '주문 건수',
+                            data: chartData.data,
+                            backgroundColor: [ 
+                                'rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)',
+                                'rgba(255, 206, 86, 0.7)', 'rgba(75, 192, 192, 0.7)',
+                                'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)'
+                            ],
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('차트 데이터를 불러오는 중 오류 발생:', error));
+    }
 });
 </script>
 {% endblock %}
