@@ -1,4 +1,4 @@
-# wms_app/models.py
+# plz-test/wms/wms-569b83abab27982f84c8119e40d23c3d187118cc/wms_app/models.py
 
 from django.db import models
 from django.contrib.auth.models import AbstractUser
@@ -85,7 +85,7 @@ class Order(models.Model):
 
     shipper = models.ForeignKey(Shipper, on_delete=models.SET_NULL, null=True, verbose_name='화주사')
     channel = models.ForeignKey(SalesChannel, on_delete=models.SET_NULL, null=True, verbose_name='판매 채널')
-    order_no = models.CharField(max_length=100, verbose_name='주문번호', null=True, blank=True, unique=True)
+    order_no = models.CharField(max_length=100, verbose_name='주문번호', null=True, blank=True)
     order_date = models.DateTimeField(verbose_name='주문일시')
     recipient_name = models.CharField(max_length=100, verbose_name='수취인명', blank=True)
     recipient_phone = models.CharField(max_length=20, verbose_name='연락처', blank=True)
@@ -101,6 +101,9 @@ class Order(models.Model):
     class Meta:
         verbose_name = '주문'
         verbose_name_plural = '주문'
+        # --- [삭제] 기존의 unique_together 제약 조건을 제거합니다. ---
+        # 이제 중복 검사는 views.py에서 더 복잡한 기준으로 처리합니다.
+        # --------------------------------------------------------
 
     def __str__(self):
         return f"주문 {self.order_no} ({self.shipper.name if self.shipper else 'N/A'})"
@@ -109,26 +112,18 @@ class Order(models.Model):
         if not self.order_no:
             today = timezone.now().date()
             today_str = today.strftime('%Y%m%d')
-            
-            # --- [수정] 주문번호 자동 생성 로직 변경 ---
-            # 오늘 날짜와 '-' 그리고 숫자로만 이루어진 주문번호를 찾도록 정규식(regex)을 사용합니다.
             last_order = Order.objects.filter(order_no__regex=r'^{}-\d+$'.format(today_str)).order_by('order_no').last()
             
             if last_order:
-                # 마지막 주문번호에서 순번 부분을 추출하여 1 증가시킵니다.
                 last_seq_str = last_order.order_no.split('-')[1]
-                # 혹시 모를 비정상적인 데이터에 대비하여, 순번 부분이 숫자인지 한번 더 확인합니다.
                 if last_seq_str.isdigit():
                     new_seq = int(last_seq_str) + 1
                 else:
-                    new_seq = 1 # 숫자가 아니면 1번부터 다시 시작
+                    new_seq = 1
             else:
-                # 오늘 첫 주문인 경우 1번으로 시작합니다.
                 new_seq = 1
             
-            # YYYYMMDD-XXXX 형식으로 새로운 주문번호를 생성합니다.
             self.order_no = f"{today_str}-{str(new_seq).zfill(4)}"
-            # -------------------------------------------
             
         super().save(*args, **kwargs)
 

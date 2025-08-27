@@ -6,21 +6,16 @@
 </div>
 
 <div class="form-container">
-    {# 읽기 전용 정보 표시 #}
     <div class="form-group">
-        <label>주문번호:</label>
-        <input type="text" value="{{ order.order_no }}" class="form-control" readonly>
-    </div>
-    <div class="form-group">
-        <label>오류 원인:</label>
-        <textarea class="form-control" readonly rows="3" style="color: var(--danger-color);">{{ order.error_message }}</textarea>
+        <label>오류 내용:</label>
+        <textarea class="form-control" readonly rows="2" style="color: var(--danger-color);">{{ order.error_message }}</textarea>
     </div>
     <hr>
     
-    {# 수정 가능한 폼 #}
     <form id="main-form" method="post">
         {% csrf_token %}
         
+        {# 이제 폼이 모든 필드를 포함하므로, 루프를 통해 렌더링합니다. #}
         {% for field in form %}
         <div class="form-group">
             <label for="{{ field.id_for_label }}">{{ field.label }}</label>
@@ -30,11 +25,11 @@
             {% endif %}
         </div>
         {% endfor %}
+
+        <div class="form-actions">
+            <a href="{% url 'order_list_error' order.order_date|date:'Y-m-d' %}" class="btn btn-secondary">취소</a>
+            <button type="submit" class="btn btn-primary">수정 완료</button>
+        </div>
     </form>
-    
-    <div class="form-actions">
-        <a href="{% url 'order_list_error' %}" class="btn btn-secondary">취소</a>
-        <button type="submit" class="btn btn-primary" form="main-form">수정 완료</button>
-    </div>
 </div>
 {% endblock %}

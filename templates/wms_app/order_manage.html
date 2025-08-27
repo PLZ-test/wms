@@ -28,49 +28,18 @@
     input:checked + .slider { background-color: var(--accent-color); }
     input:checked + .slider:before { transform: translateX(26px); }
 
-    /* --- [추가] 로딩 스피너와 팝업창을 위한 스타일 --- */
-    .loader-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(255, 255, 255, 0.7);
-        z-index: 9998;
-        justify-content: center;
-        align-items: center;
-    }
-    .loader {
-        border: 8px solid #f3f3f3;
-        border-top: 8px solid var(--accent-color);
-        border-radius: 50%;
-        width: 60px;
-        height: 60px;
-        animation: spin 1s linear infinite;
-    }
+    .loader-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.7); z-index: 9998; justify-content: center; align-items: center; }
+    .loader { border: 8px solid #f3f3f3; border-top: 8px solid var(--accent-color); border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 9999;
-        left: 0; top: 0;
-        width: 100%; height: 100%;
-        background-color: rgba(0,0,0,0.5);
-    }
-    .modal-content {
-        background-color: #fff;
-        margin: 20% auto;
-        padding: 30px;
-        border-radius: 8px;
-        width: 90%;
-        max-width: 500px;
-        text-align: center;
-    }
+    .modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+    .modal-content { background-color: #fff; margin: 20% auto; padding: 30px; border-radius: 8px; width: 90%; max-width: 500px; text-align: center; }
     .modal-content h3 { margin-top: 0; }
     .modal-actions { margin-top: 20px; display: flex; justify-content: center; gap: 15px; }
-    /* ------------------------------------------------ */
+
+    /* --- [추가] 날짜 선택 필터 스타일 --- */
+    .date-filter-form { display: flex; align-items: center; gap: 10px; }
+    .date-input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; }
+    /* ---------------------------------- */
 </style>
 {% endblock %}
 
@@ -81,8 +50,10 @@
     </div>
     <h1>주문 관리</h1>
     <div class="btn-group">
-        <a href="{% url 'order_manage' %}?clear_results=true" class="btn btn-secondary">결과 초기화</a>
-
+        <form method="get" action="{% url 'order_manage' %}" class="date-filter-form">
+            <input type="date" name="date" id="date-filter-input" class="date-input" value="{{ selected_date }}">
+            <button type="submit" class="btn btn-info">조회</button>
+        </form>
         <input type="file" id="excel-file-input" name="excel_file" accept=".xlsx, .xls" style="display: none;">
         <button id="excel-upload-btn" class="btn btn-primary">수기 등록</button>
         
@@ -99,44 +70,29 @@
 <div class="order-manage-container">
     <div class="order-grid-layout">
         <section class="top-stat-card">
-            <h3>채널별 주문량</h3>
+            <h3>채널별 주문량 ({{ selected_date }})</h3>
             <div class="chart-container">
                 <canvas id="channelOrderChart"></canvas>
             </div>
         </section>
         
-        {% if excel_result %}
-            <a href="{% url 'order_list_success' %}" class="status-card success">
-                <h4>성공 주문 보기</h4>
-                <div class="status-card-content">
-                    <p class="count">총 {{ excel_result.success_count }} 건</p>
-                    <h2 class="percentage percentage-success" id="success-percentage">0%</h2>
-                    <p class="label">성공률</p>
-                </div>
-            </a>
-            <a href="{% url 'order_list_error' %}" class="status-card error">
-                <h4>오류 주문 보기</h4>
-                <div class="status-card-content">
-                    <p class="count">총 {{ excel_result.error_count }} 건</p>
-                    <h2 class="percentage percentage-error" id="error-percentage">0%</h2>
-                    <p class="label">실패율</p>
-                </div>
-            </a>
-        {% else %}
-            <a href="#" class="status-card success" style="cursor: not-allowed; opacity: 0.6;">
-                <h4>성공 주문 보기</h4>
-                <div class="status-card-content">
-                    <div class="graph-placeholder-large" style="height: 100%; width: 100%; background-color: #f3f4f6; border-radius: 6px;"></div>
-                </div>
-            </a>
-            <a href="#" class="status-card error" style="cursor: not-allowed; opacity: 0.6;">
-                <h4>오류 주문 보기</h4>
-                <div class="status-card-content">
-                    <div class="graph-placeholder-large" style="height: 100%; width: 100%; background-color: #f3f4f6; border-radius: 6px;"></div>
-                </div>
-            </a>
-        {% endif %}
-    </div>
+        <a href="{% url 'order_list_success' selected_date %}" class="status-card success">
+            <h4>성공 주문 보기</h4>
+            <div class="status-card-content">
+                <p class="count">총 {{ daily_stats.success_count }} 건</p>
+                <h2 class="percentage percentage-success">{{ daily_stats.success_rate|floatformat:1 }}%</h2>
+                <p class="label">성공률</p>
+            </div>
+        </a>
+        <a href="{% url 'order_list_error' selected_date %}" class="status-card error">
+            <h4>오류 주문 보기</h4>
+            <div class="status-card-content">
+                <p class="count">총 {{ daily_stats.error_count }} 건</p>
+                <h2 class="percentage percentage-error">{{ daily_stats.error_rate|floatformat:1 }}%</h2>
+                <p class="label">실패율</p>
+            </div>
+        </a>
+        </div>
 </div>
 
 <div class="loader-overlay" id="loader">
@@ -153,16 +109,16 @@
         </div>
     </div>
 </div>
-{% if excel_result %}
-    {{ excel_result|json_script:"excel-data" }}
-{% endif %}
+
+{# {% if excel_result %} {{ excel_result|json_script:"excel-data" }} {% endif %} #}
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- [수정] 엑셀 업로드 관련 로직 전체 변경 ---
+    // 엑셀 업로드 관련 로직은 이전과 동일하게 유지됩니다.
+    // 최종 처리가 성공하면, 서버가 오늘 날짜의 주문관리 페이지로 리다이렉트 시켜줍니다.
     const uploadBtn = document.getElementById('excel-upload-btn');
     const fileInput = document.getElementById('excel-file-input');
     const loader = document.getElementById('loader');
@@ -172,13 +128,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const yesBtn = document.getElementById('modal-yes-btn');
     const noBtn = document.getElementById('modal-no-btn');
 
-    // '수기 등록' 버튼 클릭 시 파일 선택 창 열기
     uploadBtn.addEventListener('click', () => {
-        fileInput.value = ''; // 이전에 선택한 파일 초기화
+        fileInput.value = '';
         fileInput.click();
     });
 
-    // 파일이 선택되면 업로드 처리 시작
     fileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (file) {
@@ -186,29 +140,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 1. 파일 업로드 처리 핸들러
     function handleFileUpload(file) {
-        loader.style.display = 'flex'; // 로딩 시작
-
+        loader.style.display = 'flex';
         const formData = new FormData();
         formData.append('excel_file', file);
         formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
-        // 2. 서버로 1차 중복 검사 요청
-        fetch("{% url 'check_duplicates_api' %}", {
-            method: 'POST',
-            body: formData,
-        })
+        fetch("{% url 'check_duplicates_api' %}", { method: 'POST', body: formData })
         .then(response => response.json())
         .then(data => {
             if (data.has_duplicates) {
-                // 2-1. 중복이 있으면, 팝업창 표시
-                loader.style.display = 'none'; // 로딩 숨김
+                loader.style.display = 'none';
                 modalText.textContent = `엑셀 파일에 이미 등록된 주문 ${data.duplicate_count}건이 있습니다. 중복 건을 새로운 주문으로 등록하시겠습니까?`;
                 modal.style.display = 'block';
 
-                // 팝업창의 '예'/'아니오' 버튼에 클릭 이벤트 리스너를 한 번만 등록
-                // .cloneNode(true)를 이용해 기존 이벤트를 제거하고 새로 추가
                 const newYesBtn = yesBtn.cloneNode(true);
                 yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
                 newYesBtn.addEventListener('click', () => processFile(file, 'yes'));
@@ -216,10 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newNoBtn = noBtn.cloneNode(true);
                 noBtn.parentNode.replaceChild(newNoBtn, noBtn);
                 newNoBtn.addEventListener('click', () => processFile(file, 'no'));
-
             } else {
-                // 2-2. 중복이 없으면, 바로 최종 처리 진행
-                processFile(file, 'no'); // 'no' 옵션으로 보내면 중복 처리 로직을 타지 않음
+                processFile(file, 'no');
             }
         })
         .catch(error => {
@@ -229,24 +172,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 3. 사용자의 선택을 받아 최종 처리 요청
     function processFile(file, handleDuplicatesChoice) {
-        modal.style.display = 'none'; // 팝업창 숨김
-        loader.style.display = 'flex'; // 로딩 시작
-
+        modal.style.display = 'none';
+        loader.style.display = 'flex';
         const formData = new FormData();
         formData.append('excel_file', file);
-        formData.append('handle_duplicates', handleDuplicatesChoice); // 사용자의 선택 ('yes' or 'no')
+        formData.append('handle_duplicates', handleDuplicatesChoice);
         formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
-        fetch("{% url 'process_orders_api' %}", {
-            method: 'POST',
-            body: formData,
-        })
+        fetch("{% url 'process_orders_api' %}", { method: 'POST', body: formData })
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                // 4. 최종 처리가 성공하면, 결과 페이지로 이동
+                // [수정] 서버가 알려주는 URL로 이동합니다. (오늘 날짜의 주문관리 페이지)
                 window.location.href = data.redirect_url;
             } else {
                 loader.style.display = 'none';
@@ -260,26 +198,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- (이하 통계 그래프 관련 코드는 변경 없음) ---
-    const excelDataElement = document.getElementById('excel-data');
-    if (excelDataElement) {
-        const excel_result = JSON.parse(excelDataElement.textContent);
-        const total = excel_result.total;
-        const successCount = excel_result.success_count;
-        const errorCount = excel_result.error_count;
-        const successPercentageEl = document.getElementById('success-percentage');
-        const errorPercentageEl = document.getElementById('error-percentage');
-        if (total > 0) {
-            const successPercent = ((successCount / total) * 100).toFixed(1);
-            const errorPercent = ((errorCount / total) * 100).toFixed(1);
-            if (successPercentageEl) successPercentageEl.textContent = `${successPercent}%`;
-            if (errorPercentageEl) errorPercentageEl.textContent = `${errorPercent}%`;
-        }
-    }
+    // --- [수정] 통계 카드 퍼센트 계산 로직 삭제 (이제 서버에서 직접 계산) ---
 
+    // 채널별 주문량 그래프 로직은 그대로 유지
     const ctx = document.getElementById('channelOrderChart');
     if (ctx) {
-        fetch("{% url 'channel_order_chart_data' %}")
+        // [수정] 그래프 API 호출 시 선택된 날짜를 파라미터로 넘겨줍니다.
+        fetch(`{% url 'channel_order_chart_data' %}?date={{ selected_date }}`)
             .then(response => response.json())
             .then(chartData => {
                 new Chart(ctx, {

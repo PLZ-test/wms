@@ -4,16 +4,15 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # --- [삭제] 기존 엑셀 업로드 URL을 제거합니다. ---
-    # path('order/excel_upload/', views.order_excel_upload, name='order_excel_upload'),
-    
-    # --- [추가] 엑셀 처리를 위한 새로운 API URL 2개 ---
-    # 1. 엑셀 파일 내 중복 데이터를 1차로 검사하는 API
+    # 엑셀 처리 API
     path('api/orders/check_duplicates/', views.check_duplicates_api, name='check_duplicates_api'),
-    # 2. 사용자의 선택을 받아 최종적으로 엑셀 데이터를 처리하고 저장하는 API
     path('api/orders/process_excel/', views.process_orders_api, name='process_orders_api'),
-    # -------------------------------------------------
+    
+    # --- [추가] 인라인 오류 수정을 위한 재처리 API URL ---
+    path('api/orders/retry_error/', views.retry_error_order_api, name='retry_error_order_api'),
+    # ----------------------------------------------------
 
+    # 기존 URL
     path('order/invoice/', views.order_invoice_view, name='order_invoice'),
     path('api/orders/', views.order_list_api, name='order_list_api'),
     path('api/check-username/', views.check_username, name='check_username'),
@@ -25,48 +24,39 @@ urlpatterns = [
 
     # Order (주문)
     path('order/manage/', views.order_manage, name='order_manage'),
-    path('order/list/success/', views.order_list_success, name='order_list_success'),
-    path('order/list/error/', views.order_list_error, name='order_list_error'),
+    path('order/list/success/<str:date_str>/', views.order_list_success, name='order_list_success'),
+    path('order/list/error/<str:date_str>/', views.order_list_error, name='order_list_error'),
+    path('order/list/error/<str:date_str>/download/', views.download_error_excel, name='download_error_excel'),
+    
+    # [수정] order_update_view는 이제 DB에 저장된 오류만 수정하도록 역할을 명확히 합니다.
     path('order/<int:order_pk>/update/', views.order_update_view, name='order_update'),
 
-    # In/Out (입출고)
+    # (이하 나머지 URL은 변경 없음)
     path('stock/in/', views.stock_in, name='stock_in'),
     path('stock/out/', views.stock_out, name='stock_out'),
     path('stock/io/', views.stock_io_view, name='stock_io'),
     path('stock/history/', views.stock_movement_history, name='stock_history'),
-    
-    # Settlement (정산)
     path('settlement/status/', views.settlement_status, name='settlement_status'),
     path('settlement/billing/', views.settlement_billing, name='settlement_billing'),
     path('settlement/config/', views.settlement_config, name='settlement_config'),
-    
-    # Management (관리)
     path('management/dashboard/', views.management_dashboard, name='management_dashboard'),
     path('management/orders/', views.order_manage_new, name='order_manage_new'),
     path('management/stock/', views.stock_manage, name='stock_manage'),
     path('management/users/', views.user_manage, name='user_manage'),
     path('management/users/<int:pk>/update/', views.user_update, name='user_update'),
     path('stock/<int:pk>/update/', views.stock_update, name='stock_update'),
-
-    # Settings - Center (센터 설정)
     path('settings/centers/', views.CenterListView.as_view(), name='center_list'),
     path('settings/centers/new/', views.CenterCreateView.as_view(), name='center_create'),
     path('settings/centers/<int:pk>/edit/', views.CenterUpdateView.as_view(), name='center_update'),
     path('settings/centers/<int:pk>/delete/', views.CenterDeleteView.as_view(), name='center_delete'),
-
-    # Settings - Shipper (화주사 설정)
     path('settings/shippers/', views.ShipperListView.as_view(), name='shipper_list'),
     path('settings/shippers/new/', views.ShipperCreateView.as_view(), name='shipper_create'),
     path('settings/shippers/<int:pk>/edit/', views.ShipperUpdateView.as_view(), name='shipper_update'),
     path('settings/shippers/<int:pk>/delete/', views.ShipperDeleteView.as_view(), name='shipper_delete'),
-
-    # Settings - Courier (택배사 설정)
     path('settings/couriers/', views.CourierListView.as_view(), name='courier_list'),
     path('settings/couriers/new/', views.CourierCreateView.as_view(), name='courier_create'),
     path('settings/couriers/<int:pk>/edit/', views.CourierUpdateView.as_view(), name='courier_update'),
     path('settings/couriers/<int:pk>/delete/', views.CourierDeleteView.as_view(), name='courier_delete'),
-
-    # Shipper Products (화주사별 상품)
     path('shippers/<int:shipper_pk>/products/', views.shipper_product_list, name='shipper_product_list'),
     path('shippers/<int:shipper_pk>/products/new/', views.shipper_product_create, name='shipper_product_create'),
     path('products/<int:pk>/edit/', views.shipper_product_update, name='shipper_product_update'),
