@@ -57,6 +57,14 @@
         font-size: 12px !important;
         box-sizing: border-box;
     }
+    
+    /* [추가] 수정 불가 버튼 스타일 */
+    .btn-disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+        color: #666;
+        text-align: center;
+    }
 </style>
 {% endblock %}
 
@@ -96,30 +104,52 @@
             {% if list_type == 'success' %}
                 <td data-label="선택"><input type="checkbox" class="order-checkbox" value="{{ order.id }}"></td>
             {% endif %}
-            <td data-label="주문번호">{{ order.order_no }}</td>
-            <td data-label="화주사">{{ order.shipper.name }}</td>
-            <td data-label="수취인">{{ order.recipient_name }}</td>
             
-            <td data-label="상품내역" style="text-align: center;">
-                <button class="btn btn-secondary btn-sm view-details-btn btn-fixed-size" data-order-id="{{ order.id }}">상세보기</button>
-            </td>
-            
-            {% if list_type == 'error' %}
-                <td data-label="오류 원인" style="color: var(--danger-color);">{{ order.error_message }}</td>
+            {# --- [수정] 오류 목록 표시 로직 변경 --- #}
+            {# order 객체에 id 속성이 있는지 확인하여 DB에 저장된 주문인지, 아니면 단순 오류 정보인지 구분합니다. #}
+            {% if order.id %}
+                {# DB에 저장된 주문인 경우, 기존과 동일하게 객체 속성에 접근합니다. #}
+                <td data-label="주문번호">{{ order.order_no }}</td>
+                <td data-label="화주사">{{ order.shipper.name }}</td>
+                <td data-label="수취인">{{ order.recipient_name }}</td>
+                <td data-label="상품내역" style="text-align: center;">
+                    <button class="btn btn-secondary btn-sm view-details-btn btn-fixed-size" data-order-id="{{ order.id }}">상세보기</button>
+                </td>
+                {% if list_type == 'error' %}
+                    <td data-label="오류 원인" style="color: var(--danger-color);">{{ order.error_message }}</td>
+                {% endif %}
+                <td data-label="관리">
+                    <div class="action-buttons">
+                        {% if list_type == 'success' %}
+                            <button class="btn btn-info print-single-btn btn-fixed-size" data-order-id="{{ order.id }}">송장 출력</button>
+                        {% else %}
+                            {# DB에 저장된 오류는 수정 페이지로 이동하는 '수정' 버튼을 보여줍니다. #}
+                            <a href="{% url 'order_update' order.id %}" class="btn btn-primary btn-fixed-size">수정</a>
+                        {% endif %}
+                    </div>
+                </td>
+            {% else %}
+                {# DB에 저장되지 않은 오류 정보(딕셔너리)인 경우, 키 값으로 데이터에 접근합니다. #}
+                <td data-label="주문번호">{{ order.order_no|default:"-" }}</td>
+                <td data-label="화주사">{{ order.shipper_name|default:"-" }}</td>
+                <td data-label="수취인">{{ order.recipient_name|default:"-" }}</td>
+                <td data-label="상품내역" style="text-align: center;">확인 불가</td>
+                {% if list_type == 'error' %}
+                    <td data-label="오류 원인" style="color: var(--danger-color);">{{ order.error_message }}</td>
+                {% endif %}
+                <td data-label="관리">
+                    <div class="action-buttons">
+                        {# DB에 저장되지 않은 오류는 수정이 불가능하므로, 비활성화된 버튼과 안내 문구를 보여줍니다. #}
+                        <div class="btn btn-disabled btn-fixed-size">엑셀 파일<br>수정 필요</div>
+                    </div>
+                </td>
             {% endif %}
-            <td data-label="관리">
-                <div class="action-buttons">
-                    {% if list_type == 'success' %}
-                        <button class="btn btn-info print-single-btn btn-fixed-size" data-order-id="{{ order.id }}">송장 출력</button>
-                    {% else %}
-                        <a href="{% url 'order_update' order.id %}" class="btn btn-primary btn-fixed-size">수정</a>
-                    {% endif %}
-                </div>
-            </td>
+            {# ------------------------------------ #}
         </tr>
         {% empty %}
         <tr>
-            <td colspan="{% if list_type == 'success' %}6{% else %}5{% endif %}" style="text-align: center;">데이터가 없습니다.</td>
+            {# list_type에 따라 colspan 값이 동적으로 바뀌도록 수정 #}
+            <td colspan="{% if list_type == 'success' %}6{% elif list_type == 'error' %}6{% else %}5{% endif %}" style="text-align: center;">데이터가 없습니다.</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -148,7 +178,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 상세보기 로직 (최종 안정화 버전) ---
     const modal = document.getElementById('details-modal');
     const dataElement = document.getElementById('orders-data-json');
 
@@ -191,7 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 송장 출력 로직 ---
     if ("{{ list_type }}" === "success") {
         function printInvoices(ids) {
             if (!ids || ids.length === 0) {

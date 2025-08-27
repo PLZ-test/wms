@@ -1,16 +1,20 @@
-# wms_app/urls.py
+# plz-test/wms/wms-569b83abab27982f84c8119e40d23c3d187118cc/wms_app/urls.py
 
 from django.urls import path
 from . import views
 
 urlpatterns = [
-    # API 및 엑셀 업로드 URL
-    path('order/excel_upload/', views.order_excel_upload, name='order_excel_upload'),
+    # --- [삭제] 기존 엑셀 업로드 URL을 제거합니다. ---
+    # path('order/excel_upload/', views.order_excel_upload, name='order_excel_upload'),
     
-    # --- [추가] 송장 출력 URL ---
-    path('order/invoice/', views.order_invoice_view, name='order_invoice'),
-    # --------------------------
+    # --- [추가] 엑셀 처리를 위한 새로운 API URL 2개 ---
+    # 1. 엑셀 파일 내 중복 데이터를 1차로 검사하는 API
+    path('api/orders/check_duplicates/', views.check_duplicates_api, name='check_duplicates_api'),
+    # 2. 사용자의 선택을 받아 최종적으로 엑셀 데이터를 처리하고 저장하는 API
+    path('api/orders/process_excel/', views.process_orders_api, name='process_orders_api'),
+    # -------------------------------------------------
 
+    path('order/invoice/', views.order_invoice_view, name='order_invoice'),
     path('api/orders/', views.order_list_api, name='order_list_api'),
     path('api/check-username/', views.check_username, name='check_username'),
     path('api/order-chart/', views.order_chart_data, name='order_chart_data'),

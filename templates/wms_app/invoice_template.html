@@ -5,20 +5,26 @@
     <title>송장 출력</title>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
+        @media print {
+            body { -webkit-print-color-adjust: exact; }
+            /* [수정] 강제로 페이지를 나누는 속성을 제거하여 브라우저가 자동으로 처리하도록 합니다. */
+        }
+        
         @page {
-            size: 100mm 150mm; /* 일반적인 택배 송장 용지 크기 */
+            size: 150mm 100mm;
             margin: 5mm;
         }
         body {
             font-family: 'Malgun Gothic', 'Dotum', sans-serif;
             font-size: 9pt;
-            line-height: 1.4;
+            line-height: 1.3;
         }
         .invoice-box {
             border: 2px solid #000;
-            padding: 3mm;
-            width: 90mm;
-            height: 140mm;
+            padding: 2mm;
+            /* [수정] 인쇄 영역에 맞게 송장 박스의 전체 크기를 미세 조정합니다. */
+            width: 138mm;
+            height: 88mm;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -27,103 +33,85 @@
         table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
         td, th {
             border: 1px solid #000;
-            padding: 4px;
-            vertical-align: top;
-        }
-        .header-logo {
-            font-size: 16pt;
-            font-weight: bold;
-            text-align: center;
-            padding: 5px 0;
-            border-bottom: 2px solid #000;
-        }
-        .info-table td {
-            height: 50px;
-        }
-        .info-table .label {
-            font-weight: bold;
-            width: 20%;
-            text-align: center;
-            background-color: #f2f2f2;
-        }
-        .info-table .content {
-            padding-left: 10px;
-        }
-        .address {
-            font-size: 12pt;
-            font-weight: bold;
-        }
-        .items-table {
-            margin-top: 5px;
-        }
-        .items-table .label {
-            font-weight: bold;
-            text-align: center;
-            background-color: #f2f2f2;
-        }
-        .items-table .content {
-            font-size: 8pt;
             padding: 3px;
+            vertical-align: middle;
+            text-align: center;
+            word-break: break-all;
         }
-        .memo-box {
-            margin-top: 5px;
-            flex-grow: 1;
+        .text-left { text-align: left; padding-left: 5px; }
+
+        .header-table .logo-cell {
+            font-size: 18pt;
+            font-weight: bold;
+            border-right: 2px solid black;
+            width: 60%;
         }
-        .memo-box td {
-            height: 100%;
+        .header-table .side-cell {
+            font-size: 11pt;
+            font-weight: bold;
         }
+
+        .address-table .label { font-weight: bold; width: 15%; background-color: #f2f2f2; }
+        .address-table .content { height: 25px; vertical-align: top; }
+        .address-table .address { font-size: 10pt; font-weight: bold; }
+        .address-table .name { font-size: 11pt; font-weight: bold; }
+
+        .items-table .label { font-weight: bold; width: 15%; background-color: #f2f2f2; }
+        .items-table .content { height: 20px; vertical-align: top; }
+
         .barcode-container {
             text-align: center;
-            padding: 5px 0;
+            padding-top: 2px;
+            border-top: 2px solid #000;
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .barcode-container svg {
-            width: 100%;
-            height: 50px;
+            width: 90%;
+            height: 40px;
         }
     </style>
 </head>
 <body>
     {% for order in orders %}
     <div class="invoice-box">
-        <div class="header-logo">WMS 택배</div>
-        
-        <table class="info-table">
+        <table class="header-table">
+            <tr>
+                <td class="logo-cell">LOTTE</td>
+                <td class="side-cell">일반</td>
+            </tr>
+        </table>
+
+        <table class="address-table" style="margin-top: 4px;">
             <tr>
                 <td class="label">보내는<br>사람</td>
-                <td class="content">
-                    {{ order.shipper.name }}<br>
-                    {{ order.shipper.center.address }}<br>
-                    TEL: {{ order.shipper.contact }}
+                <td class="content text-left">
+                    {{ order.shipper.name }} / {{ order.shipper.contact }}<br>
+                    {{ order.shipper.center.address }}
+                </td>
+                <td class="label">상품명</td>
+                <td class="content text-left" rowspan="2">
+                    {% for item in order.items.all %}
+                        {{ item.product.name }} ({{ item.quantity }}개){% if not forloop.last %}<br>{% endif %}
+                    {% endfor %}
                 </td>
             </tr>
             <tr>
                 <td class="label">받는<br>사람</td>
-                <td class="content">
-                    <span class="address">{{ order.address }}</span><br>
-                    <strong>{{ order.recipient_name }}</strong><br>
-                    TEL: {{ order.recipient_phone }}
+                <td class="content text-left">
+                    <div class="address">{{ order.address }}</div>
+                    <div class="name">{{ order.recipient_name }} / {{ order.recipient_phone }}</div>
                 </td>
             </tr>
-        </table>
-
-        <table class="items-table">
              <tr>
-                <td class="label" style="width: 20%;">상품명</td>
-                <td class="content">
-                    {% for item in order.items.all %}
-                        {{ item.product.name }} ({{ item.quantity }}개){% if not forloop.last %}, {% endif %}
-                    {% endfor %}
-                </td>
-            </tr>
-        </table>
-
-        <table class="memo-box">
-            <tr>
-                <td class="label" style="width: 20%;">배송<br>메시지</td>
-                <td class="content">{{ order.delivery_memo|default:"-" }}</td>
+                <td class="label">배송<br>메시지</td>
+                <td class="content text-left" colspan="3">{{ order.delivery_memo|default:"-" }}</td>
             </tr>
         </table>
         
@@ -132,7 +120,7 @@
                 jsbarcode-format="CODE128"
                 jsbarcode-value="{{ order.order_no }}"
                 jsbarcode-displayValue="true"
-                jsbarcode-fontSize="14"
+                jsbarcode-fontSize="16"
                 jsbarcode-textmargin="2">
             </svg>
         </div>
@@ -140,7 +128,11 @@
     {% endfor %}
 
     <script type="text/javascript">
-        JsBarcode(".barcode").init();
+        try {
+            JsBarcode(".barcode").init();
+        } catch (e) {
+            // JsBarcode가 없는 경우 오류를 무시합니다.
+        }
     </script>
 </body>
 </html>

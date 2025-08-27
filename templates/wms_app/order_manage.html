@@ -1,86 +1,24 @@
 {% extends 'wms_app/base.html' %}
 
-{% comment %}
-- [수정] 페이지 헤더 레이아웃을 '뒤로가기 | 중앙 제목 | 기능 버튼' 구조로 변경
-{% endcomment %}
-
 {% block extra_head %}
 <style>
-    /* '채널별 주문량' 그래프와 카드 레이아웃에 관련된 스타일입니다.
-    이전과 동일하며 변경 사항 없습니다.
-    */
-    .order-manage-container {
-        display: flex;
-        flex-direction: column;
-        gap: 24px;
-        padding: 20px 0;
-    }
-    .order-grid-layout {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 24px;
-        width: 80%;
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-    .top-stat-card {
-        background-color: #fff;
-        padding: 24px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        grid-column: 1 / -1;
-        width: auto;
-    }
-    .top-stat-card h3 {
-        margin: 0 0 16px 0;
-        font-size: 1.2em;
-        color: #333;
-    }
-    .chart-container {
-        position: relative;
-        height: 250px;
-        width: 100%;
-    }
-    .status-card {
-        background-color: #fff;
-        padding: 24px;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-        border: 2px solid transparent;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        text-align: center;
-        display: block;
-        text-decoration: none;
-        color: inherit;
-    }
-    .status-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
-    }
+    .order-manage-container { display: flex; flex-direction: column; gap: 24px; padding: 20px 0; }
+    .order-grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; width: 80%; max-width: 1200px; margin: 0 auto; }
+    .top-stat-card { background-color: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); grid-column: 1 / -1; width: auto; }
+    .top-stat-card h3 { margin: 0 0 16px 0; font-size: 1.2em; color: #333; }
+    .chart-container { position: relative; height: 250px; width: 100%; }
+    .status-card { background-color: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); border: 2px solid transparent; transition: border-color 0.2s, box-shadow 0.2s; text-align: center; display: block; text-decoration: none; color: inherit; }
+    .status-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
     .status-card.success:hover { border-color: var(--accent-color); }
     .status-card.error:hover { border-color: var(--danger-color); }
-    .status-card-content {
-        height: 120px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-    }
-    .status-card-content .count {
-        font-size: 1.1em;
-        margin: 0;
-    }
-    .status-card-content .percentage {
-        font-size: 2.5em;
-        font-weight: bold;
-        margin: 5px 0;
-    }
-    .status-card-content .label {
-        margin: 0;
-        color: #666;
-    }
+    .status-card-content { height: 120px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    .status-card-content .count { font-size: 1.1em; margin: 0; }
+    .status-card-content .percentage { font-size: 2.5em; font-weight: bold; margin: 5px 0; }
+    .status-card-content .label { margin: 0; color: #666; }
     .percentage-success { color: var(--accent-color); }
     .percentage-error { color: var(--danger-color); }
+    
+    .page-header .btn-group { display: flex; align-items: center; gap: 15px; }
     .auto-toggle-container { display: flex; align-items: center; gap: 10px; }
     .auto-toggle-label { font-weight: bold; font-size: 1.1em; color: #555; }
     .toggle-switch { position: relative; display: inline-block; width: 60px; height: 34px; }
@@ -89,22 +27,65 @@
     .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
     input:checked + .slider { background-color: var(--accent-color); }
     input:checked + .slider:before { transform: translateX(26px); }
+
+    /* --- [추가] 로딩 스피너와 팝업창을 위한 스타일 --- */
+    .loader-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.7);
+        z-index: 9998;
+        justify-content: center;
+        align-items: center;
+    }
+    .loader {
+        border: 8px solid #f3f3f3;
+        border-top: 8px solid var(--accent-color);
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0; top: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+        background-color: #fff;
+        margin: 20% auto;
+        padding: 30px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 500px;
+        text-align: center;
+    }
+    .modal-content h3 { margin-top: 0; }
+    .modal-actions { margin-top: 20px; display: flex; justify-content: center; gap: 15px; }
+    /* ------------------------------------------------ */
 </style>
 {% endblock %}
 
 {% block content %}
-{# --- [수정] 페이지 헤더 구조 변경 --- #}
 <div class="page-header">
     <div>
         <a href="{% url 'dashboard' %}" class="btn btn-secondary">뒤로가기</a>
     </div>
     <h1>주문 관리</h1>
     <div class="btn-group">
-        <form id="excel-upload-form" action="{% url 'order_excel_upload' %}" method="post" enctype="multipart/form-data" style="display: none;">
-            {% csrf_token %}
-            <input type="file" id="excel-file-input" name="excel_file" accept=".xlsx, .xls">
-        </form>
+        <a href="{% url 'order_manage' %}?clear_results=true" class="btn btn-secondary">결과 초기화</a>
+
+        <input type="file" id="excel-file-input" name="excel_file" accept=".xlsx, .xls" style="display: none;">
         <button id="excel-upload-btn" class="btn btn-primary">수기 등록</button>
+        
         <div class="auto-toggle-container">
             <span class="auto-toggle-label">AUTO</span>
             <label class="toggle-switch">
@@ -114,7 +95,6 @@
         </div>
     </div>
 </div>
-{# ----------------------------------- #}
 
 <div class="order-manage-container">
     <div class="order-grid-layout">
@@ -159,6 +139,20 @@
     </div>
 </div>
 
+<div class="loader-overlay" id="loader">
+    <div class="loader"></div>
+</div>
+
+<div id="duplicate-confirm-modal" class="modal">
+    <div class="modal-content">
+        <h3>중복 주문 확인</h3>
+        <p id="modal-text">엑셀 파일에 이미 등록된 주문 N건이 있습니다. 중복 건을 새로운 주문으로 등록하시겠습니까?</p>
+        <div class="modal-actions">
+            <button id="modal-yes-btn" class="btn btn-primary">예</button>
+            <button id="modal-no-btn" class="btn btn-secondary">아니오</button>
+        </div>
+    </div>
+</div>
 {% if excel_result %}
     {{ excel_result|json_script:"excel-data" }}
 {% endif %}
@@ -168,12 +162,105 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // --- [수정] 엑셀 업로드 관련 로직 전체 변경 ---
     const uploadBtn = document.getElementById('excel-upload-btn');
     const fileInput = document.getElementById('excel-file-input');
-    const uploadForm = document.getElementById('excel-upload-form');
-    uploadBtn.addEventListener('click', () => { fileInput.click(); });
-    fileInput.addEventListener('change', () => { if (fileInput.files.length > 0) { uploadForm.submit(); } });
+    const loader = document.getElementById('loader');
 
+    const modal = document.getElementById('duplicate-confirm-modal');
+    const modalText = document.getElementById('modal-text');
+    const yesBtn = document.getElementById('modal-yes-btn');
+    const noBtn = document.getElementById('modal-no-btn');
+
+    // '수기 등록' 버튼 클릭 시 파일 선택 창 열기
+    uploadBtn.addEventListener('click', () => {
+        fileInput.value = ''; // 이전에 선택한 파일 초기화
+        fileInput.click();
+    });
+
+    // 파일이 선택되면 업로드 처리 시작
+    fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            handleFileUpload(file);
+        }
+    });
+
+    // 1. 파일 업로드 처리 핸들러
+    function handleFileUpload(file) {
+        loader.style.display = 'flex'; // 로딩 시작
+
+        const formData = new FormData();
+        formData.append('excel_file', file);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        // 2. 서버로 1차 중복 검사 요청
+        fetch("{% url 'check_duplicates_api' %}", {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.has_duplicates) {
+                // 2-1. 중복이 있으면, 팝업창 표시
+                loader.style.display = 'none'; // 로딩 숨김
+                modalText.textContent = `엑셀 파일에 이미 등록된 주문 ${data.duplicate_count}건이 있습니다. 중복 건을 새로운 주문으로 등록하시겠습니까?`;
+                modal.style.display = 'block';
+
+                // 팝업창의 '예'/'아니오' 버튼에 클릭 이벤트 리스너를 한 번만 등록
+                // .cloneNode(true)를 이용해 기존 이벤트를 제거하고 새로 추가
+                const newYesBtn = yesBtn.cloneNode(true);
+                yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
+                newYesBtn.addEventListener('click', () => processFile(file, 'yes'));
+
+                const newNoBtn = noBtn.cloneNode(true);
+                noBtn.parentNode.replaceChild(newNoBtn, noBtn);
+                newNoBtn.addEventListener('click', () => processFile(file, 'no'));
+
+            } else {
+                // 2-2. 중복이 없으면, 바로 최종 처리 진행
+                processFile(file, 'no'); // 'no' 옵션으로 보내면 중복 처리 로직을 타지 않음
+            }
+        })
+        .catch(error => {
+            loader.style.display = 'none';
+            console.error('Error:', error);
+            alert('파일 검사 중 오류가 발생했습니다.');
+        });
+    }
+
+    // 3. 사용자의 선택을 받아 최종 처리 요청
+    function processFile(file, handleDuplicatesChoice) {
+        modal.style.display = 'none'; // 팝업창 숨김
+        loader.style.display = 'flex'; // 로딩 시작
+
+        const formData = new FormData();
+        formData.append('excel_file', file);
+        formData.append('handle_duplicates', handleDuplicatesChoice); // 사용자의 선택 ('yes' or 'no')
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch("{% url 'process_orders_api' %}", {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // 4. 최종 처리가 성공하면, 결과 페이지로 이동
+                window.location.href = data.redirect_url;
+            } else {
+                loader.style.display = 'none';
+                alert('파일 처리 중 오류가 발생했습니다: ' + data.message);
+            }
+        })
+        .catch(error => {
+            loader.style.display = 'none';
+            console.error('Error:', error);
+            alert('파일 처리 중 오류가 발생했습니다.');
+        });
+    }
+
+    // --- (이하 통계 그래프 관련 코드는 변경 없음) ---
     const excelDataElement = document.getElementById('excel-data');
     if (excelDataElement) {
         const excel_result = JSON.parse(excelDataElement.textContent);
@@ -202,24 +289,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         datasets: [{
                             label: '주문 건수',
                             data: chartData.data,
-                            backgroundColor: [ 
-                                'rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)',
-                                'rgba(255, 206, 86, 0.7)', 'rgba(75, 192, 192, 0.7)',
-                                'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)'
-                            ],
+                            backgroundColor: [ 'rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)', 'rgba(255, 206, 86, 0.7)', 'rgba(75, 192, 192, 0.7)', 'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)' ],
                             borderColor: '#fff',
                             borderWidth: 2
                         }]
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'right',
-                            }
-                        }
-                    }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
                 });
             })
             .catch(error => console.error('차트 데이터를 불러오는 중 오류 발생:', error));
