@@ -2,49 +2,60 @@
 
 {% block extra_head %}
 <style>
-    /* ... (기존 modal, btn-fixed-size 등 스타일은 변경 없음) ... */
+    /* 기본 모달 및 버튼 스타일 */
     .modal { display: none; position: fixed; z-index: 1002; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
     .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; position: relative; }
     .close-btn { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
     .close-btn:hover { color: black; }
     #modal-items-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     #modal-items-table th, #modal-items-table td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    #modal-items-table th { background-color: #f2f2f2; }
     .btn-fixed-size { width: 110px !important; padding: 5px 10px !important; font-size: 12px !important; box-sizing: border-box; }
     .btn-completed { background-color: #2ecc71; color: white; cursor: default; }
-    
-    /* --- [추가] 인라인 수정 팝업창 스타일 --- */
-    #edit-modal .modal-content {
-        max-width: 500px;
+
+    /* --- 인라인 수정 UI 스타일 --- */
+    .error-details-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px 15px;
+        align-items: center;
+        padding: 10px;
     }
-    #edit-modal-form .form-group {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 5px;
-        margin-bottom: 15px;
+    .error-detail-item {
+        display: contents;
     }
-    #edit-modal-form label {
+    .error-detail-item label {
         font-weight: bold;
+        font-size: 0.9em;
+        text-align: right;
+        padding-right: 5px;
+        color: #555;
     }
-    #edit-modal-form input {
+    .error-detail-item .value-field {
         width: 100%;
-        padding: 8px;
+        padding: 6px;
         border: 1px solid #ccc;
         border-radius: 4px;
         box-sizing: border-box;
     }
-    .modal-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        margin-top: 20px;
+    .value-field.is-error {
+        border: 2px solid var(--danger-color);
+        box-shadow: 0 0 5px rgba(231, 76, 60, 0.5);
     }
-    
-    /* --- [추가] 행 삭제 애니메이션 --- */
+    .error-message-row {
+        grid-column: 1 / -1;
+        text-align: center;
+        font-size: 0.9em;
+        color: var(--danger-color);
+        padding-top: 5px;
+        font-weight: bold;
+    }
     .row-removing {
-        transition: opacity 0.5s ease-out;
+        transition: opacity 0.5s ease-out, background-color 0.5s ease-out;
         opacity: 0;
+        background-color: #d4edda !important;
+    }
+    .list-table td {
+        vertical-align: top;
     }
 </style>
 {% endblock %}
@@ -58,8 +69,8 @@
     <div class="btn-group">
         {% if list_type == 'success' and orders %}
             <button id="print-all-btn" class="btn btn-primary">선택 송장 출력</button>
-        {% endif %}
-        {% if list_type == 'error' and orders %}
+        {% elif list_type == 'error' and orders %}
+            <button id="batch-retry-btn" class="btn btn-primary">수정 확인</button>
             <a href="{% url 'download_error_excel' request.resolver_match.kwargs.date_str %}" class="btn btn-danger">오류 엑셀 받기</a>
         {% endif %}
     </div>
@@ -70,232 +81,244 @@
         <tr>
             {% if list_type == 'success' %}
                 <th style="width: 5%; text-align: center;"><input type="checkbox" id="select-all-checkbox"></th>
+                <th style="text-align: center;">주문번호</th>
+                <th style="text-align: center;">화주사</th>
+                <th style="text-align: center;">수취인</th>
+                <th style="text-align: center;">상품내역</th>
+                <th style="text-align: center;">관리</th>
+            {% else %}
+                <th style="width: 15%; text-align: center;">에러 번호</th>
+                <th style="width: 15%; text-align: center;">수취인</th>
+                <th style="text-align: center;">오류 내용 (인라인 수정)</th>
             {% endif %}
-            <th style="text-align: center;">주문번호</th>
-            <th style="text-align: center;">화주사</th>
-            <th style="text-align: center;">수취인</th>
-            <th style="text-align: center;">상품내역</th>
-            {% if list_type == 'error' %}
-                <th style="width: 30%; text-align: center;">오류 내용</th>
-            {% endif %}
-            <th style="text-align: center;">관리</th>
         </tr>
     </thead>
     <tbody>
         {% for order in orders %}
-        {# --- [수정] 오류 정보를 data-* 속성에 저장하기 위해 행에 id 부여 --- #}
-        <tr id="order-row-{{ order.id|default:order.row_idx }}">
             {% if list_type == 'success' %}
-                <td data-label="선택"><input type="checkbox" class="order-checkbox" value="{{ order.id }}" {% if order.order_status == 'SHIPPED' %}disabled{% endif %}></td>
-            {% endif %}
-            
-            {% if list_type == 'error' and not order.id %}
-                <td data-label="주문번호">{{ order.original_data.order_no|default:"-" }}</td>
-                <td data-label="화주사">{{ order.original_data.shipper_name|default:"-" }}</td>
-                <td data-label="수취인">{{ order.original_data.recipient_name|default:"-" }}</td>
-                <td data-label="상품내역" style="text-align: center;">{{ order.original_data.product_identifier|default:"-" }} ({{ order.original_data.quantity|default:"?" }}개)</td>
-                <td data-label="오류 내용" class="error-message-cell" style="color: var(--danger-color);">{{ order.error_message }}</td>
-                <td data-label="관리">
-                    <div class="action-buttons">
-                        {# --- [수정] 수정 버튼에 모든 원본 데이터와 오류 정보를 data-* 속성으로 저장 --- #}
-                        <button class="btn btn-primary btn-fixed-size edit-error-btn"
-                                data-row-id="{{ order.row_idx }}"
-                                data-is-db-entry="false"
-                                data-order-no="{{ order.original_data.order_no|default:'' }}"
-                                data-shipper-name="{{ order.original_data.shipper_name|default:'' }}"
-                                data-channel-name="{{ order.original_data.channel_name|default:'' }}"
-                                data-recipient-name="{{ order.original_data.recipient_name|default:'' }}"
-                                data-recipient-phone="{{ order.original_data.recipient_phone|default:'' }}"
-                                data-address="{{ order.original_data.address|default:'' }}"
-                                data-product-identifier="{{ order.original_data.product_identifier|default:'' }}"
-                                data-quantity="{{ order.original_data.quantity|default:'' }}"
-                                data-error-field="{{ order.error_field }}"
-                                data-error-value="{{ order.error_value }}">
-                            수정
-                        </button>
-                    </div>
-                </td>
-            {% else %}
-                <td data-label="주문번호">{{ order.order_no }}</td>
-                <td data-label="화주사">{{ order.shipper.name|default:"-" }}</td>
-                <td data-label="수취인">{{ order.recipient_name }}</td>
-                <td data-label="상품내역" style="text-align: center;">
-                    <button class="btn btn-secondary btn-sm view-details-btn btn-fixed-size" data-order-id="{{ order.id }}">상세보기</button>
-                </td>
-                {% if list_type == 'error' %}
-                    <td data-label="오류 내용" class="error-message-cell" style="color: var(--danger-color);">{{ order.error_message }}</td>
-                {% endif %}
-                <td data-label="관리">
-                    <div class="action-buttons">
-                        {% if list_type == 'success' %}
-                            {% if order.order_status == 'SHIPPED' %}
-                                <button class="btn btn-completed btn-fixed-size" disabled>출고완료</button>
-                            {% else %}
-                                <button class="btn btn-info print-single-btn btn-fixed-size" data-order-id="{{ order.id }}">송장 출력</button>
-                            {% endif %}
-                        {% elif list_type == 'error' %}
-                            {# DB에 저장된 오류는 기존의 수정 페이지로 이동하는 링크를 유지합니다. #}
-                            <a href="{% url 'order_update' order.id %}" class="btn btn-primary btn-fixed-size">수정</a>
+                <tr id="order-row-{{ order.id }}">
+                    <td data-label="선택"><input type="checkbox" class="order-checkbox" value="{{ order.id }}" {% if order.order_status == 'SHIPPED' %}disabled{% endif %}></td>
+                    <td data-label="주문번호">{{ order.order_no }}</td>
+                    <td data-label="화주사">{% if order.shipper %}{{ order.shipper.name }}{% else %}-{% endif %}</td>
+                    <td data-label="수취인">{{ order.recipient_name }}</td>
+                    <td data-label="상품내역" style="text-align: center;">
+                        <button class="btn btn-secondary btn-sm view-details-btn btn-fixed-size" data-order-id="{{ order.id }}">상세보기</button>
+                    </td>
+                    <td data-label="관리">
+                        <div class="action-buttons">
+                        {% if order.order_status == 'SHIPPED' %}
+                            <button class="btn btn-completed btn-fixed-size" disabled>출고완료</button>
+                        {% else %}
+                            <button class="btn btn-info print-single-btn btn-fixed-size" data-order-id="{{ order.id }}">송장 출력</button>
                         {% endif %}
-                    </div>
-                </td>
+                        </div>
+                    </td>
+                </tr>
+            {% else %}
+                {# --- [핵심 수정] 이제 order.id 유무로 DB객체와 세션객체를 명확히 구분 --- #}
+                <tr class="error-row" data-unique-id="{% if order.id %}db-{{ order.id }}{% else %}session-{{ order.row_idx }}{% endif %}" data-order-no="{% if order.id %}{{ order.order_no }}{% else %}{{ order.original_data.order_no|default:'' }}{% endif %}">
+                    {% with data=order.original_data %}
+                    <td data-label="에러 번호">{% if order.id %}{{ order.order_no }}{% else %}행 #{{ order.row_idx }}{% endif %}</td>
+                    <td data-label="수취인">
+                        <input type="text" name="recipient_name" class="value-field" value="{% if order.id %}{{ order.recipient_name }}{% else %}{{ data.recipient_name|default:'' }}{% endif %}">
+                    </td>
+                    <td data-label="오류 내용">
+                        <div class="error-details-grid">
+                            <div class="error-detail-item">
+                                <label for="shipper_name-{{ forloop.counter }}">화주사</label>
+                                <input type="text" id="shipper_name-{{ forloop.counter }}" name="shipper_name" class="value-field {% if 'shipper_name' in order.error_fields %}is-error{% endif %}" value="{% if order.id %}{% if order.shipper %}{{ order.shipper.name }}{% endif %}{% else %}{{ data.shipper_name|default:'' }}{% endif %}">
+                            </div>
+                            <div class="error-detail-item">
+                                <label for="product_identifier-{{ forloop.counter }}">상품</label>
+                                <input type="text" id="product_identifier-{{ forloop.counter }}" name="product_identifier" class="value-field {% if 'product_identifier' in order.error_fields %}is-error{% endif %}" value="{{ data.product_identifier|default:'' }}">
+                            </div>
+                             <div class="error-detail-item">
+                                <label for="channel_name-{{ forloop.counter }}">판매채널</label>
+                                <input type="text" id="channel_name-{{ forloop.counter }}" name="channel_name" class="value-field {% if 'channel_name' in order.error_fields %}is-error{% endif %}" value="{% if order.id %}{% if order.channel %}{{ order.channel.name }}{% endif %}{% else %}{{ data.channel_name|default:'' }}{% endif %}">
+                            </div>
+                             <div class="error-detail-item">
+                                <label for="quantity-{{ forloop.counter }}">수량</label>
+                                <input type="number" id="quantity-{{ forloop.counter }}" name="quantity" class="value-field {% if 'quantity' in order.error_fields %}is-error{% endif %}" value="{{ data.quantity|default:'' }}" min="1">
+                            </div>
+                            <div class="error-detail-item">
+                                <label for="recipient_phone-{{ forloop.counter }}">연락처</label>
+                                <input type="text" id="recipient_phone-{{ forloop.counter }}" name="recipient_phone" class="value-field" value="{% if order.id %}{{ order.recipient_phone }}{% else %}{{ data.recipient_phone|default:'' }}{% endif %}">
+                            </div>
+                             <div class="error-detail-item">
+                                <label for="address-{{ forloop.counter }}">주소</label>
+                                <input type="text" id="address-{{ forloop.counter }}" name="address" class="value-field" value="{% if order.id %}{{ order.address }}{% else %}{{ data.address|default:'' }}{% endif %}">
+                            </div>
+                            <div class="error-message-row" data-role="error-message">{{ order.error_message_translated }}</div>
+                        </div>
+                    </td>
+                    {% endwith %}
+                </tr>
             {% endif %}
-        </tr>
         {% empty %}
-        <tr>
-            <td colspan="6" style="text-align: center;">데이터가 없습니다.</td>
-        </tr>
+        <tr><td colspan="{% if list_type == 'success' %}6{% else %}3{% endif %}" style="text-align: center;">데이터가 없습니다.</td></tr>
         {% endfor %}
     </tbody>
 </table>
 
 <div id="details-modal" class="modal">
-    </div>
-
-<div id="edit-modal" class="modal">
     <div class="modal-content">
-        <span class="close-btn" id="edit-modal-close">&times;</span>
-        <h3 id="edit-modal-title">오류 수정</h3>
-        <form id="edit-modal-form">
-            <div class="form-group">
-                <label for="edit-input" id="edit-label">오류 필드</label>
-                <input type="text" id="edit-input" name="edit_value">
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="edit-modal-cancel">취소</button>
-                <button type="submit" class="btn btn-primary">변경</button>
-            </div>
-        </form>
+        <span class="close-btn" id="details-modal-close">&times;</span>
+        <h3>주문 상품 상세</h3>
+        <div id="modal-body"></div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 {{ orders_json|json_script:"orders-data-json" }}
-
 <script>
+    
 document.addEventListener('DOMContentLoaded', () => {
-    // 상세보기 모달 로직 (변경 없음)
-    // ...
+    // 상세보기 모달 로직
+    const detailsModal = document.getElementById('details-modal');
+    if (detailsModal) {
+        const detailsModalClose = document.getElementById('details-modal-close');
+        const modalBody = document.getElementById('modal-body');
+        const ordersData = JSON.parse(document.getElementById('orders-data-json').textContent);
 
-    // --- [추가] 인라인 오류 수정 로직 ---
-    if ("{{ list_type }}" === "error") {
-        const editModal = document.getElementById('edit-modal');
-        const editModalTitle = document.getElementById('edit-modal-title');
-        const editModalForm = document.getElementById('edit-modal-form');
-        const editLabel = document.getElementById('edit-label');
-        const editInput = document.getElementById('edit-input');
-        const closeModalBtn = document.getElementById('edit-modal-close');
-        const cancelModalBtn = document.getElementById('edit-modal-cancel');
+        document.querySelectorAll('.view-details-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const orderId = this.getAttribute('data-order-id');
+                const order = ordersData.find(o => o.id == orderId);
 
-        let currentEditingButton = null;
-
-        // 필드 이름을 한글로 변환하는 헬퍼 객체
-        const fieldNameMap = {
-            'shipper_name': '화주사명',
-            'product_identifier': '상품식별자',
-            'quantity': '수량',
-            // ... 다른 필드들도 필요하면 추가
-        };
-
-        // '수정' 버튼 클릭 시 팝업창 열기
-        document.querySelectorAll('.edit-error-btn').forEach(button => {
-            button.addEventListener('click', function(event) {
-                currentEditingButton = this;
-                const errorField = this.dataset.errorField;
-                const errorValue = this.dataset.errorValue;
-                const fieldLabel = fieldNameMap[errorField] || errorField;
-
-                editModalTitle.textContent = `${fieldLabel} 수정`;
-                editLabel.textContent = fieldLabel;
-                editInput.value = errorValue;
-                
-                editModal.style.display = 'block';
+                if (order && order.items && order.items.length > 0) {
+                    let tableHtml = '<table id="modal-items-table"><thead><tr><th>상품명</th><th>수량</th></tr></thead><tbody>';
+                    order.items.forEach(item => {
+                        tableHtml += `<tr><td>${item.product_name}</td><td>${item.quantity}</td></tr>`;
+                    });
+                    tableHtml += '</tbody></table>';
+                    modalBody.innerHTML = tableHtml;
+                } else {
+                    modalBody.innerHTML = '<p>상세 상품 내역이 없습니다.</p>';
+                }
+                detailsModal.style.display = 'block';
             });
         });
+        if(detailsModalClose) {
+            detailsModalClose.addEventListener('click', () => { detailsModal.style.display = 'none'; });
+        }
+    }
 
-        // 팝업창 닫기 이벤트
-        const closeModal = () => {
-            editModal.style.display = 'none';
-            currentEditingButton = null;
-        };
-        closeModalBtn.addEventListener('click', closeModal);
-        cancelModalBtn.addEventListener('click', closeModal);
-        window.addEventListener('click', (event) => {
-            if (event.target === editModal) closeModal();
-        });
+    // 오류 목록 인라인 수정 및 일괄 처리 로직
+    if ("{{ list_type }}" === "error") {
+        const batchRetryBtn = document.getElementById('batch-retry-btn');
+        if (batchRetryBtn) {
+            batchRetryBtn.addEventListener('click', () => {
+                const allItemsData = [];
+                document.querySelectorAll('.error-row').forEach(row => {
+                    const rowData = {
+                        unique_id: row.dataset.uniqueId,
+                        data: {
+                            order_no: row.dataset.orderNo,
+                        }
+                    };
+                    row.querySelectorAll('.value-field').forEach(input => {
+                        rowData.data[input.name] = input.value;
+                    });
+                    allItemsData.push(rowData);
+                });
 
-        // 팝업창에서 '변경' 버튼 클릭 시 (폼 제출)
-        editModalForm.addEventListener('submit', function(event) {
-            event.preventDefault();
+                if (allItemsData.length === 0) {
+                    alert('수정할 오류 항목이 없습니다.');
+                    return;
+                }
 
-            if (!currentEditingButton) return;
+                fetch("{% url 'batch_retry_error_api' %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify(allItemsData),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    let successCount = 0;
+                    data.results.forEach(result => {
+                        const targetRow = document.querySelector(`.error-row[data-unique-id="${result.unique_id}"]`);
+                        if (!targetRow) return;
+
+                        targetRow.querySelectorAll('.value-field').forEach(input => input.classList.remove('is-error'));
+                        
+                        if (result.status === 'success') {
+                            successCount++;
+                            targetRow.classList.add('row-removing');
+                            setTimeout(() => targetRow.remove(), 500);
+                        } else {
+                            const errorMsgCell = targetRow.querySelector('[data-role="error-message"]');
+                            errorMsgCell.textContent = result.error_message;
+
+                            if (result.error_fields && result.error_fields.length > 0) {
+                                result.error_fields.forEach(fieldName => {
+                                    const errorInput = targetRow.querySelector(`[name="${fieldName}"]`);
+                                    if (errorInput) errorInput.classList.add('is-error');
+                                });
+                            }
+                        }
+                    });
+                    alert(`처리 완료: 성공 ${successCount}건, 실패 ${data.results.length - successCount}건`);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('일괄 처리 중 오류가 발생했습니다.');
+                });
+            });
+        }
+    }
+
+    // 송장 출력 로직
+    if ("{{ list_type }}" === "success") {
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        const orderCheckboxes = document.querySelectorAll('.order-checkbox');
+        const printAllBtn = document.getElementById('print-all-btn');
+
+        if(selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', (e) => {
+                orderCheckboxes.forEach(checkbox => {
+                    if (!checkbox.disabled) checkbox.checked = e.target.checked;
+                });
+            });
+        }
+
+        function submitPrintRequest(orderIds) {
+            if (orderIds.length === 0) {
+                alert('출력할 주문을 선택해주세요.'); return;
+            }
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{% url "order_invoice" %}';
+            form.target = '_blank';
             
-            const btnData = currentEditingButton.dataset;
-            const updatedValue = editInput.value;
-            const errorField = btnData.errorField;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden'; csrfInput.name = 'csrfmiddlewaretoken'; csrfInput.value = '{{ csrf_token }}';
+            form.appendChild(csrfInput);
 
-            // 전송할 데이터 구성: 원본 데이터 + 수정된 값
-            const retryData = {
-                row_idx: btnData.rowId,
-                is_db_entry: btnData.isDbEntry,
-                original_data: {
-                    order_no: btnData.orderNo,
-                    shipper_name: btnData.shipperName,
-                    channel_name: btnData.channelName,
-                    recipient_name: btnData.recipientName,
-                    recipient_phone: btnData.recipientPhone,
-                    address: btnData.address,
-                    product_identifier: btnData.productIdentifier,
-                    quantity: btnData.quantity,
-                }
-            };
-            // 사용자가 수정한 필드의 값을 새로운 값으로 교체
-            retryData.original_data[errorField] = updatedValue;
+            const idsInput = document.createElement('input');
+            idsInput.type = 'hidden'; idsInput.name = 'order_ids'; idsInput.value = orderIds.join(',');
+            form.appendChild(idsInput);
 
-            // 서버로 재처리 요청 API 호출
-            fetch("{% url 'retry_error_order_api' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}',
-                },
-                body: JSON.stringify(retryData),
-            })
-            .then(response => response.json())
-            .then(data => {
-                const rowId = btnData.isDbEntry === 'true' ? btnData.orderId : btnData.rowId;
-                const targetRow = document.getElementById(`order-row-${rowId}`);
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+            setTimeout(() => window.location.reload(), 1000);
+        }
 
-                if (data.status === 'success') {
-                    // 성공 시: 행을 부드럽게 삭제하고 성공 메시지 표시
-                    targetRow.classList.add('row-removing');
-                    setTimeout(() => {
-                        targetRow.remove();
-                    }, 500);
-                    // (추가) 성공 알림 기능
-                    alert(`주문(ID: ${data.order_id})이 성공적으로 처리되었습니다.`);
-                } else {
-                    // 실패 시: 오류 내용 업데이트
-                    const errorCell = targetRow.querySelector('.error-message-cell');
-                    errorCell.textContent = data.error_info.error_message;
-                    
-                    // 버튼의 data-* 속성도 새로운 오류 정보로 업데이트
-                    currentEditingButton.dataset.errorField = data.error_info.error_field;
-                    currentEditingButton.dataset.errorValue = data.error_info.error_value;
+        if(printAllBtn) {
+            printAllBtn.addEventListener('click', () => {
+                const selectedIds = Array.from(orderCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+                submitPrintRequest(selectedIds);
+            });
+        }
 
-                    alert(`수정 실패: ${data.error_info.error_message}`);
-                }
-            })
-            .catch(error => console.error('Error:', error))
-            .finally(() => {
-                closeModal();
+        document.querySelectorAll('.print-single-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const orderId = this.getAttribute('data-order-id');
+                submitPrintRequest([orderId]);
             });
         });
     }
-
-    // (이하 송장 출력 관련 로직은 변경 없음)
-    // ...
 });
 </script>
 {% endblock %}

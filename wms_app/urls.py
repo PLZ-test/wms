@@ -8,16 +8,14 @@ urlpatterns = [
     path('api/orders/check_duplicates/', views.check_duplicates_api, name='check_duplicates_api'),
     path('api/orders/process_excel/', views.process_orders_api, name='process_orders_api'),
     
-    # --- [추가] 인라인 오류 수정을 위한 재처리 API URL ---
-    path('api/orders/retry_error/', views.retry_error_order_api, name='retry_error_order_api'),
-    # ----------------------------------------------------
+    # --- [수정] 기존 단일 재처리 API 삭제 후, 새로운 일괄 처리 API URL 추가 ---
+    path('api/orders/batch_retry/', views.batch_retry_error_api, name='batch_retry_error_api'),
+    # ------------------------------------------------------------------
 
     # 기존 URL
     path('order/invoice/', views.order_invoice_view, name='order_invoice'),
-    path('api/orders/', views.order_list_api, name='order_list_api'),
     path('api/check-username/', views.check_username, name='check_username'),
     path('api/order-chart/', views.order_chart_data, name='order_chart_data'),
-    path('api/delivery-chart/', views.delivery_chart_data, name='delivery_chart_data'),
     path('api/channel-order-chart/', views.channel_order_chart_data, name='channel_order_chart_data'),
 
     path('', views.dashboard, name='dashboard'),
@@ -28,7 +26,6 @@ urlpatterns = [
     path('order/list/error/<str:date_str>/', views.order_list_error, name='order_list_error'),
     path('order/list/error/<str:date_str>/download/', views.download_error_excel, name='download_error_excel'),
     
-    # [수정] order_update_view는 이제 DB에 저장된 오류만 수정하도록 역할을 명확히 합니다.
     path('order/<int:order_pk>/update/', views.order_update_view, name='order_update'),
 
     # (이하 나머지 URL은 변경 없음)
