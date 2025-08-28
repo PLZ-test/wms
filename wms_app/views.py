@@ -1,3 +1,4 @@
+# plz-test/wms/wms-95300fdc4eff314b8a6a6b04c01868223efd706d/wms_app/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
@@ -41,6 +42,28 @@ def order_invoice_view(request):
 # ----------------------------------------
 # API 뷰
 # ----------------------------------------
+
+@login_required
+def product_autocomplete_api(request):
+    """
+    화주사 이름과 검색어를 받아 일치하는 상품 목록을 JSON으로 반환합니다.
+    """
+    shipper_name = request.GET.get('shipper_name')
+    term = request.GET.get('term')
+
+    if not shipper_name or not term:
+        return JsonResponse([], safe=False)
+
+    try:
+        # --- [수정] Q 객체를 키워드 인자 앞으로 이동하여 문법 오류 해결 ---
+        products = Product.objects.filter(
+            Q(name__icontains=term) | Q(barcode__icontains=term),
+            shipper__name=shipper_name
+        ).values_list('name', flat=True)[:10]
+        # --------------------------------------------------------
+        return JsonResponse(list(products), safe=False)
+    except Exception:
+        return JsonResponse([], safe=False)
 
 @login_required
 @require_POST
@@ -96,7 +119,6 @@ def process_orders_api(request):
         shipper = None
 
         try:
-            # 1. 모든 오류를 검출하여 리스트에 누적
             if not order_data['shipper_name']:
                 validation_errors.append("화주사 정보 누락")
                 error_fields.append('shipper_name')
@@ -127,11 +149,9 @@ def process_orders_api(request):
                 validation_errors.append("판매채널 누락")
                 error_fields.append('channel_name')
 
-            # 2. 누적된 오류가 있으면 예외 발생
             if validation_errors:
                 raise ValueError(", ".join(sorted(list(set(validation_errors)))))
 
-            # 3. 중복 검사
             is_duplicate_db = Order.objects.filter(
                 shipper=shipper, recipient_name=order_data['recipient_name'], 
                 address=order_data['address'], recipient_phone=order_data['recipient_phone']
@@ -144,7 +164,6 @@ def process_orders_api(request):
                 continue
             processed_in_this_file.add(file_duplicate_key)
 
-            # 4. 성공 처리
             channel, _ = SalesChannel.objects.get_or_create(name=order_data['channel_name'])
             product = Product.objects.get(Q(barcode=order_data['product_identifier']) | Q(name=order_data['product_identifier']), shipper=shipper)
             
@@ -160,7 +179,6 @@ def process_orders_api(request):
             current_success_orders.append(order)
 
         except Exception as e:
-            # 5. 오류 기록
             error_data_packet = {
                 'row_idx': row_idx,
                 'error_message': str(e),
@@ -398,37 +416,61 @@ def order_list_success(request, date_str):
 @login_required
 def order_list_error(request, date_str):
     target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-    db_errors = []
-    for order in Order.objects.filter(order_date__date=target_date, order_status='ERROR'):
+    
+    processed_errors = []
+
+    db_error_orders = Order.objects.filter(order_date__date=target_date, order_status='ERROR')
+    for order in db_error_orders:
+        error_details = {}
         try:
             error_details = json.loads(order.error_message)
-            order.original_data = error_details.get('original_data', {})
-            order.error_message_translated = error_details.get('error_message', '')
-            order.error_fields = error_details.get('error_fields', []) 
         except (json.JSONDecodeError, TypeError):
-            order.original_data = {}
-            order.error_message_translated = order.error_message
-            order.error_fields = []
-        db_errors.append(order)
+            pass
         
+        original_data = error_details.get('original_data', {})
+        
+        processed_errors.append({
+            'is_db': True,
+            'unique_id': f"db-{order.id}",
+            'id': order.id,
+            'order_no': order.order_no,
+            'recipient_name': order.recipient_name,
+            'shipper_name': order.shipper.name if order.shipper else original_data.get('shipper_name', ''),
+            'product_identifier': original_data.get('product_identifier', ''),
+            'channel_name': order.channel.name if order.channel else original_data.get('channel_name', ''),
+            'quantity': original_data.get('quantity', ''),
+            'recipient_phone': order.recipient_phone,
+            'address': order.address,
+            'error_message': error_details.get('error_message', order.error_message or '알 수 없는 오류'),
+            'error_fields': error_details.get('error_fields', []),
+        })
+
     temp_errors = request.session.pop('temp_errors', [])
     for error in temp_errors:
-        error['error_message_translated'] = error.get('error_message', '')
-        error['error_fields'] = error.get('error_fields', [])
-
-    all_errors = db_errors + temp_errors
-    
-    orders_json = []
-    for order in db_errors:
-        if hasattr(order, 'items') and order.items.exists():
-            items = [{'product_name': item.product.name, 'quantity': item.quantity} for item in order.items.all()]
-            orders_json.append({'id': order.id, 'items': items})
+        original_data = error.get('original_data', {})
+        processed_errors.append({
+            'is_db': False,
+            'unique_id': f"session-{error.get('row_idx')}",
+            'row_idx': error.get('row_idx'),
+            'order_no': original_data.get('order_no', ''),
+            'recipient_name': original_data.get('recipient_name', ''),
+            'shipper_name': original_data.get('shipper_name', ''),
+            'product_identifier': original_data.get('product_identifier', ''),
+            'channel_name': original_data.get('channel_name', ''),
+            'quantity': original_data.get('quantity', ''),
+            'recipient_phone': original_data.get('recipient_phone', ''),
+            'address': original_data.get('address', ''),
+            'error_message': error.get('error_message', '알 수 없는 오류'),
+            'error_fields': error.get('error_fields', []),
+        })
 
     context = {
-        'page_title': f'{date_str} 오류 주문 목록', 'orders': all_errors,
-        'list_type': 'error', 'orders_json': orders_json,
+        'page_title': f'{date_str} 오류 주문 목록', 
+        'orders': processed_errors,
+        'list_type': 'error',
     }
     return render(request, 'wms_app/order_list_result.html', context)
+
 
 @login_required
 def download_error_excel(request, date_str):

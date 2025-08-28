@@ -57,6 +57,37 @@
     .list-table td {
         vertical-align: top;
     }
+
+    /* --- 자동완성 스타일 --- */
+    .autocomplete-wrapper {
+        position: relative;
+        width: 100%;
+    }
+    .autocomplete-items {
+        position: absolute;
+        border: 1px solid #d4d4d4;
+        border-bottom: none;
+        border-top: none;
+        z-index: 99;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 150px;
+        overflow-y: auto;
+    }
+    .autocomplete-items div {
+        padding: 10px;
+        cursor: pointer;
+        background-color: #fff; 
+        border-bottom: 1px solid #d4d4d4; 
+    }
+    .autocomplete-items div:hover {
+        background-color: #e9e9e9; 
+    }
+    .autocomplete-active {
+        background-color: DodgerBlue !important; 
+        color: #ffffff; 
+    }
 </style>
 {% endblock %}
 
@@ -115,41 +146,42 @@
                     </td>
                 </tr>
             {% else %}
-                <tr class="error-row" data-unique-id="{% if order.id %}db-{{ order.id }}{% else %}session-{{ order.row_idx }}{% endif %}" data-order-no="{% if order.id %}{{ order.order_no }}{% else %}{{ order.original_data.order_no|default:'' }}{% endif %}">
-                    {% with data=order.original_data %}
-                    <td data-label="에러 번호">{% if order.id %}{{ order.order_no }}{% else %}행 #{{ order.row_idx }}{% endif %}</td>
-                    <td data-label="수취인"><input type="text" name="recipient_name" class="value-field" value="{% if order.id %}{{ order.recipient_name }}{% else %}{{ data.recipient_name|default:'' }}{% endif %}"></td>
+                <tr class="error-row" data-unique-id="{{ order.unique_id }}" data-order-no="{{ order.order_no|default:'' }}">
+                    <td data-label="에러 번호">{% if order.is_db %}{{ order.order_no }}{% else %}행 #{{ order.row_idx }}{% endif %}</td>
+                    <td data-label="수취인"><input type="text" name="recipient_name" class="value-field" value="{{ order.recipient_name|default:'' }}"></td>
                     <td data-label="오류 내용">
                         <div class="error-details-grid">
-                            {# --- [핵심] 이제 error_fields(리스트)에 포함되어 있는지 확인하여 is-error 클래스를 적용 --- #}
                             <div class="error-detail-item">
                                 <label for="shipper_name-{{ forloop.counter }}">화주사</label>
-                                <input type="text" id="shipper_name-{{ forloop.counter }}" name="shipper_name" class="value-field {% if 'shipper_name' in order.error_fields %}is-error{% endif %}" value="{% if order.id %}{% if order.shipper %}{{ order.shipper.name }}{% endif %}{% else %}{{ data.shipper_name|default:'' }}{% endif %}">
+                                <input type="text" id="shipper_name-{{ forloop.counter }}" name="shipper_name" class="value-field {% if 'shipper_name' in order.error_fields %}is-error{% endif %}" value="{{ order.shipper_name|default:'' }}">
                             </div>
+                            
                             <div class="error-detail-item">
                                 <label for="product_identifier-{{ forloop.counter }}">상품</label>
-                                <input type="text" id="product_identifier-{{ forloop.counter }}" name="product_identifier" class="value-field {% if 'product_identifier' in order.error_fields %}is-error{% endif %}" value="{{ data.product_identifier|default:'' }}">
+                                <div class="autocomplete-wrapper">
+                                    <input type="text" id="product_identifier-{{ forloop.counter }}" name="product_identifier" class="value-field product-autocomplete {% if 'product_identifier' in order.error_fields %}is-error{% endif %}" value="{{ order.product_identifier|default:'' }}" autocomplete="off">
+                                </div>
                             </div>
+                            
                              <div class="error-detail-item">
                                 <label for="channel_name-{{ forloop.counter }}">판매채널</label>
-                                <input type="text" id="channel_name-{{ forloop.counter }}" name="channel_name" class="value-field {% if 'channel_name' in order.error_fields %}is-error{% endif %}" value="{% if order.id %}{% if order.channel %}{{ order.channel.name }}{% endif %}{% else %}{{ data.channel_name|default:'' }}{% endif %}">
+                                <input type="text" id="channel_name-{{ forloop.counter }}" name="channel_name" class="value-field {% if 'channel_name' in order.error_fields %}is-error{% endif %}" value="{{ order.channel_name|default:'' }}">
                             </div>
                              <div class="error-detail-item">
                                 <label for="quantity-{{ forloop.counter }}">수량</label>
-                                <input type="number" id="quantity-{{ forloop.counter }}" name="quantity" class="value-field {% if 'quantity' in order.error_fields %}is-error{% endif %}" value="{{ data.quantity|default:'' }}" min="1">
+                                <input type="number" id="quantity-{{ forloop.counter }}" name="quantity" class="value-field {% if 'quantity' in order.error_fields %}is-error{% endif %}" value="{{ order.quantity|default:'' }}" min="1">
                             </div>
                             <div class="error-detail-item">
                                 <label for="recipient_phone-{{ forloop.counter }}">연락처</label>
-                                <input type="text" id="recipient_phone-{{ forloop.counter }}" name="recipient_phone" class="value-field" value="{% if order.id %}{{ order.recipient_phone }}{% else %}{{ data.recipient_phone|default:'' }}{% endif %}">
+                                <input type="text" id="recipient_phone-{{ forloop.counter }}" name="recipient_phone" class="value-field" value="{{ order.recipient_phone|default:'' }}">
                             </div>
                              <div class="error-detail-item">
                                 <label for="address-{{ forloop.counter }}">주소</label>
-                                <input type="text" id="address-{{ forloop.counter }}" name="address" class="value-field" value="{% if order.id %}{{ order.address }}{% else %}{{ data.address|default:'' }}{% endif %}">
+                                <input type="text" id="address-{{ forloop.counter }}" name="address" class="value-field" value="{{ order.address|default:'' }}">
                             </div>
-                            <div class="error-message-row" data-role="error-message">{{ order.error_message_translated }}</div>
+                            <div class="error-message-row" data-role="error-message">{{ order.error_message }}</div>
                         </div>
                     </td>
-                    {% endwith %}
                 </tr>
             {% endif %}
         {% empty %}
@@ -168,16 +200,18 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if orders_json %}
 {{ orders_json|json_script:"orders-data-json" }}
+{% endif %}
 <script>
-
 document.addEventListener('DOMContentLoaded', () => {
     // 상세보기 모달 로직
     const detailsModal = document.getElementById('details-modal');
     if (detailsModal) {
         const detailsModalClose = document.getElementById('details-modal-close');
         const modalBody = document.getElementById('modal-body');
-        const ordersData = JSON.parse(document.getElementById('orders-data-json').textContent);
+        const ordersDataEl = document.getElementById('orders-data-json');
+        const ordersData = ordersDataEl ? JSON.parse(ordersDataEl.textContent) : [];
 
         document.querySelectorAll('.view-details-btn').forEach(button => {
             button.addEventListener('click', function() {
@@ -200,6 +234,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if(detailsModalClose) {
             detailsModalClose.addEventListener('click', () => { detailsModal.style.display = 'none'; });
         }
+        window.addEventListener('click', (event) => {
+            if (event.target == detailsModal) {
+                detailsModal.style.display = 'none';
+            }
+        });
     }
 
     // 오류 목록 인라인 수정 및 일괄 처리 로직
@@ -256,7 +295,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         }
                     });
-                    alert(`처리 완료: 성공 ${successCount}건, 실패 ${data.results.length - successCount}건`);
+                    if (data.results.length > 0) {
+                        alert(`처리 완료: 성공 ${successCount}건, 실패 ${data.results.length - successCount}건`);
+                    }
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -267,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 송장 출력 로직
-    if ("{{ list_type }}" === "success") {
+   if ("{{ list_type }}" === "success") {
         const selectAllCheckbox = document.getElementById('select-all-checkbox');
         const orderCheckboxes = document.querySelectorAll('.order-checkbox');
         const printAllBtn = document.getElementById('print-all-btn');
@@ -290,11 +331,15 @@ document.addEventListener('DOMContentLoaded', () => {
             form.target = '_blank';
             
             const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden'; csrfInput.name = 'csrfmiddlewaretoken'; csrfInput.value = '{{ csrf_token }}';
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = '{{ csrf_token }}';
             form.appendChild(csrfInput);
 
             const idsInput = document.createElement('input');
-            idsInput.type = 'hidden'; idsInput.name = 'order_ids'; idsInput.value = orderIds.join(',');
+            idsInput.type = 'hidden';
+            idsInput.name = 'order_ids';
+            idsInput.value = orderIds.join(',');
             form.appendChild(idsInput);
 
             document.body.appendChild(form);
@@ -317,6 +362,76 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    // --- [수정] 자동완성 스크립트 최종본 ---
+    function initAutocomplete(inputElement) {
+        const wrapper = inputElement.closest('.autocomplete-wrapper');
+        if (!wrapper) return;
+
+        inputElement.addEventListener("input", function(e) {
+            const val = this.value;
+            closeAllLists();
+            if (!val || val.length < 1) { return false; }
+
+            const parentRow = this.closest('.error-row');
+            if (!parentRow) return;
+            
+            const shipperInput = parentRow.querySelector('[name="shipper_name"]');
+            if (!shipperInput) return;
+
+            const shipperName = shipperInput.value;
+            if (!shipperName) { return false; }
+
+            fetch(`{% url 'product_autocomplete_api' %}?shipper_name=${encodeURIComponent(shipperName)}&term=${encodeURIComponent(val)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data || data.length === 0) return;
+
+                    const autocompleteList = document.createElement("DIV");
+                    autocompleteList.setAttribute("id", inputElement.id + "autocomplete-list");
+                    autocompleteList.setAttribute("class", "autocomplete-items");
+                    wrapper.appendChild(autocompleteList);
+
+                    data.forEach(item => {
+                        const itemDiv = document.createElement("DIV");
+                        itemDiv.innerHTML = item.replace(new RegExp(val, "gi"), (match) => `<strong>${match}</strong>`);
+                        
+                        // 클릭 이벤트 리스너 수정
+                        itemDiv.addEventListener("click", function(e) {
+                            // 클릭된 div의 실제 텍스트 내용으로 값을 교체합니다.
+                            inputElement.value = this.textContent;
+                            closeAllLists();
+                        });
+                        autocompleteList.appendChild(itemDiv);
+                    });
+                })
+                .catch(error => {
+                    console.error('Autocomplete fetch error:', error);
+                });
+        });
+        
+        function closeAllLists(elmnt) {
+            const items = document.getElementsByClassName("autocomplete-items");
+            for (let i = items.length - 1; i >= 0; i--) {
+                if (elmnt != items[i] && elmnt != inputElement) {
+                    items[i].parentNode.removeChild(items[i]);
+                }
+            }
+        }
+        
+        document.addEventListener("click", function (e) {
+            closeAllLists(e.target);
+        });
+    }
+
+    document.querySelectorAll('.product-autocomplete').forEach(input => {
+        initAutocomplete(input);
+    });
 });
 </script>
 {% endblock %}

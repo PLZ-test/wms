@@ -1,5 +1,4 @@
-# plz-test/wms/wms-569b83abab27982f84c8119e40d23c3d187118cc/wms_app/models.py
-
+# plz-test/wms/wms-95300fdc4eff314b8a6a6b04c01868223efd706d/wms_app/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone

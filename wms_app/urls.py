@@ -1,5 +1,4 @@
-# plz-test/wms/wms-569b83abab27982f84c8119e40d23c3d187118cc/wms_app/urls.py
-
+# plz-test/wms/wms-95300fdc4eff314b8a6a6b04c01868223efd706d/wms_app/urls.py
 from django.urls import path
 from . import views
 
@@ -7,10 +6,11 @@ urlpatterns = [
     # 엑셀 처리 API
     path('api/orders/check_duplicates/', views.check_duplicates_api, name='check_duplicates_api'),
     path('api/orders/process_excel/', views.process_orders_api, name='process_orders_api'),
-    
-    # --- [수정] 기존 단일 재처리 API 삭제 후, 새로운 일괄 처리 API URL 추가 ---
     path('api/orders/batch_retry/', views.batch_retry_error_api, name='batch_retry_error_api'),
-    # ------------------------------------------------------------------
+    
+    # --- [신규] 상품명 자동완성 API URL ---
+    path('api/products/autocomplete/', views.product_autocomplete_api, name='product_autocomplete_api'),
+    # ------------------------------------
 
     # 기존 URL
     path('order/invoice/', views.order_invoice_view, name='order_invoice'),
