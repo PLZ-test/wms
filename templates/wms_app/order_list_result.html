@@ -115,15 +115,13 @@
                     </td>
                 </tr>
             {% else %}
-                {# --- [핵심 수정] 이제 order.id 유무로 DB객체와 세션객체를 명확히 구분 --- #}
                 <tr class="error-row" data-unique-id="{% if order.id %}db-{{ order.id }}{% else %}session-{{ order.row_idx }}{% endif %}" data-order-no="{% if order.id %}{{ order.order_no }}{% else %}{{ order.original_data.order_no|default:'' }}{% endif %}">
                     {% with data=order.original_data %}
                     <td data-label="에러 번호">{% if order.id %}{{ order.order_no }}{% else %}행 #{{ order.row_idx }}{% endif %}</td>
-                    <td data-label="수취인">
-                        <input type="text" name="recipient_name" class="value-field" value="{% if order.id %}{{ order.recipient_name }}{% else %}{{ data.recipient_name|default:'' }}{% endif %}">
-                    </td>
+                    <td data-label="수취인"><input type="text" name="recipient_name" class="value-field" value="{% if order.id %}{{ order.recipient_name }}{% else %}{{ data.recipient_name|default:'' }}{% endif %}"></td>
                     <td data-label="오류 내용">
                         <div class="error-details-grid">
+                            {# --- [핵심] 이제 error_fields(리스트)에 포함되어 있는지 확인하여 is-error 클래스를 적용 --- #}
                             <div class="error-detail-item">
                                 <label for="shipper_name-{{ forloop.counter }}">화주사</label>
                                 <input type="text" id="shipper_name-{{ forloop.counter }}" name="shipper_name" class="value-field {% if 'shipper_name' in order.error_fields %}is-error{% endif %}" value="{% if order.id %}{% if order.shipper %}{{ order.shipper.name }}{% endif %}{% else %}{{ data.shipper_name|default:'' }}{% endif %}">
@@ -172,7 +170,7 @@
 {% block extra_js %}
 {{ orders_json|json_script:"orders-data-json" }}
 <script>
-    
+
 document.addEventListener('DOMContentLoaded', () => {
     // 상세보기 모달 로직
     const detailsModal = document.getElementById('details-modal');

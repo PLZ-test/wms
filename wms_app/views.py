@@ -22,7 +22,7 @@ import json
 
 
 # ----------------------------------------
-# 송장 출력 뷰 (변경 없음)
+# 송장 출력 뷰
 # ----------------------------------------
 @login_required
 @require_POST
@@ -91,7 +91,6 @@ def process_orders_api(request):
             'product_identifier': str(row[6]).strip() if row[6] else None, 'quantity': int(row[7]) if row[7] and str(row[7]).isdigit() else 0,
         }
         
-        # --- [핵심 수정] 여러 오류를 동시에 검출하기 위한 로직 ---
         validation_errors = []
         error_fields = []
         shipper = None
@@ -111,7 +110,7 @@ def process_orders_api(request):
             if not order_data['product_identifier']:
                 validation_errors.append("상품 정보 누락")
                 error_fields.append('product_identifier')
-            elif shipper: # 화주사가 유효할 때만 상품 검증
+            elif shipper:
                 product_exists = Product.objects.filter(
                     Q(barcode=order_data['product_identifier']) | Q(name=order_data['product_identifier']), 
                     shipper=shipper
@@ -265,7 +264,6 @@ def batch_retry_error_api(request):
             
     return JsonResponse({'results': results})
 
-# --- (이하 나머지 뷰들은 변경 없음) ---
 def translate_error_message(message_str):
     return message_str
 
