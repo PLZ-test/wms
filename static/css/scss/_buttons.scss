@@ -1,0 +1,50 @@
+.button,
+input[type=submit],
+input[type=button],
+.submit-row input,
+a.button {
+  background: var(--secondary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.button:hover,
+input[type=submit]:hover,
+input[type=button]:hover {
+  background: #2980b9;
+}
+
+.button.default,
+input[type=submit].default {
+  background: var(--primary);
+}
+
+.button.default:hover,
+input[type=submit].default:hover {
+  background: var(--primary-dark);
+}
+
+a.button {
+  padding: 10px 15px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  color: white;
+  transition: background-color 0.2s;
+
+  &.btn-primary { background-color: var(--accent-color); &:hover { background-color: #17a589; } }
+  &.btn-secondary { background-color: var(--secondary-color); &:hover { background-color: #7f8c8d; } }
+  &.btn-danger { background-color: var(--danger-color); &:hover { background-color: #c0392b; } }
+  &.btn-info { background-color: var(--info-color); &:hover { background-color: #2980b9; } }
+  &.btn-block { width: 100%; margin-top: 10px; }
+}
