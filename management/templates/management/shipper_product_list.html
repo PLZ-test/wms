@@ -1,66 +1,43 @@
 {% extends 'core/base.html' %}
 
-{% load core_tags %}
-
 {% block content %}
 <div class="page-header">
     <div>
-        <a href="{% url 'management:dashboard' %}" class="btn btn-secondary">뒤로가기</a>
+        <a href="{% url 'management:shipper_list' %}" class="btn btn-secondary">뒤로가기</a>
     </div>
-    
+
     <h1>{{ page_title }}</h1>
-    
-    {% if create_url %}
     <div class="btn-group">
-        <a href="{{ create_url }}" class="btn btn-primary">등록</a>
+        <a href="{% url 'management:product_create' shipper.pk %}" class="btn btn-primary">상품 등록</a>
     </div>
-    {% else %}
-    <div class="btn-group"></div>
-    {% endif %}
 </div>
-<p>현재 필터: <strong>{{ selected_center|default:'전체 센터' }}</strong>, <strong>{{ selected_shipper|default:'전체 화주사' }}</strong></p>
 
 <table class="list-table">
     <thead>
         <tr>
             <th>ID</th>
-            {% for col in columns %}
-            <th>{{ col.header }}</th>
-            {% endfor %}
-            <th>관리</th>
+            <th>상품명</th>
+            <th>크기(cm)</th>
+            <th>바코드</th>
+            <th>편집</th>
         </tr>
     </thead>
     <tbody>
-        {% for item in object_list %}
+        {% for product in products %}
         <tr>
             <td data-label="ID">{{ forloop.counter }}</td>
-            {% for col in columns %}
-                <td data-label="{{ col.header }}">
-                    {% if col.key == 'center' %}
-                        {{ item.center.name }}
-                    {% elif col.key == 'shipper' %}
-                        {{ item.shipper.name }}
-                    {% else %}
-                        {{ item|get_attribute:col.key }}
-                    {% endif %}
-                </td>
-            {% endfor %}
-            <td data-label="관리">
+            <td data-label="상품명">{{ product.name }}</td>
+            <td data-label="크기">{{ product.width }}x{{ product.length }}x{{ product.height }}</td>
+            <td data-label="바코드">{{ product.barcode }}</td>
+            <td data-label="편집">
                 <div class="action-buttons">
-                    {% if extra_actions %}
-                        {% for action in extra_actions %}
-                            <a href="{% url action.url_name item.pk %}" class="btn {{ action.class }}">{{ action.label }}</a>
-                        {% endfor %}
-                    {% endif %}
-                    {% if update_url_name %}
-                    <a href="{% url update_url_name item.pk %}" class="btn btn-primary">편집</a>
-                    {% endif %}
+                    <a href="{% url 'management:product_update' product.pk %}" class="btn btn-primary">편집</a>
                 </div>
             </td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="{{ columns|length|add:2 }}" style="text-align: center;">데이터가 없습니다.</td>
+            <td colspan="5" style="text-align: center;">등록된 상품이 없습니다.</td>
         </tr>
         {% endfor %}
     </tbody>

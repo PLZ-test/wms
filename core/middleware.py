@@ -19,12 +19,8 @@ class FilterPersistenceMiddleware:
 
         if 'center_filter' in request.GET:
             newly_selected_center = request.GET.get('center_filter')
-<<<<<<< HEAD:core/middleware.py
-
-=======
             
             # 선택된 센터가 변경되면 화주사 필터도 초기화
->>>>>>> 231c207effbc0089f2b998d2ac5639725c746dfc:wms_app/middleware.py
             if request.session.get('selected_center') != newly_selected_center:
                 request.session['selected_shipper'] = ''
 

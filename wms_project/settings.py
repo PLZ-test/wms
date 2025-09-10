@@ -13,7 +13,7 @@ ALLOWED_HOSTS = ['*', '127.0.0.1', 'localhost', '192.168.2.116', '192.168.2.121'
 
 # Application definition
 # [수정] INSTALLED_APPS 목록을 각 앱의 설정 클래스(apps.py) 전체 경로로 명시합니다.
-# 이렇게 하면 Django가 앱을 더 명확하게 인식할 수 있습니다.
+# 이 부분이 가장 중요합니다.
 INSTALLED_APPS = [
     # Custom Apps
     'core.apps.CoreConfig',

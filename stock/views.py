@@ -1,9 +1,10 @@
 # stock/views.py
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db import transaction, F
+from django.db import transaction
+from django.db.models import F  # <--- 경로가 django.db에서 django.db.models로 수정되었습니다.
 from django.http import HttpResponseBadRequest
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages  # <--- 이 줄이 추가되었습니다!
+from django.contrib import messages
 
 from management.models import Product # management 앱의 Product 모델
 from .models import StockMovement
