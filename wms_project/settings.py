@@ -1,7 +1,4 @@
-"""
-Django settings for wms_project project.
-"""
-
+# wms_project/settings.py
 from pathlib import Path
 import os
 
@@ -14,17 +11,27 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*','192.168.2.129']
 
-
 # Application definition
+# --- [수정] INSTALLED_APPS 목록의 순서를 변경 ---
+# 우리가 만든 앱들을 Django 기본 앱들보다 먼저 오도록 수정합니다.
 INSTALLED_APPS = [
+    # Custom Apps
+    'core',
+    'users',
+    'management',
+    'stock',
+    'orders',
+    'settlement',
+    
+    # Django Default Apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'wms_app.apps.WmsAppConfig',
 ]
+# ---------------------------------------------------
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -35,17 +42,15 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'wms_app.middleware.FilterPersistenceMiddleware',
+    'core.middleware.FilterPersistenceMiddleware',
 ]
 
 ROOT_URLCONF = 'wms_project.urls'
 
-# ----------------- [수정] TEMPLATES 설정 -----------------
-# DIRS에 우리가 만든 templates 폴더 경로를 추가합니다.
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'], # <-- 이 부분을 수정했습니다!
+        'DIRS': [BASE_DIR / 'templates'], 
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -53,16 +58,13 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'wms_app.context_processors.filters',
+                'core.context_processors.filters',
             ],
         },
     },
 ]
-# ---------------------------------------------------------
-
 
 WSGI_APPLICATION = 'wms_project.wsgi.application'
-
 
 # Database
 DATABASES = {
@@ -72,16 +74,8 @@ DATABASES = {
     }
 }
 
-
 # Password validation
-# 어떤 비밀번호든 가능하게 모든 검증 규칙을 비활성화
-AUTH_PASSWORD_VALIDATORS = [
-    # {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    # {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    # {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    # {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
-]
-
+AUTH_PASSWORD_VALIDATORS = []
 
 # Internationalization
 LANGUAGE_CODE = 'ko-kr'
@@ -89,19 +83,15 @@ TIME_ZONE = 'Asia/Seoul'
 USE_I18N = True
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
-
-# 로그인 페이지 URL을 명시적으로 지정
-LOGIN_URL = 'login'
-
-# 로그인 성공 후 이동할 URL (대시보드 페이지)
-LOGIN_REDIRECT_URL = 'dashboard'
-
 # Custom User Model 설정
-AUTH_USER_MODEL = 'wms_app.User'
+AUTH_USER_MODEL = 'users.User'
+
+# 로그인/로그아웃 URL 설정
+LOGIN_URL = 'users:login'
+LOGIN_REDIRECT_URL = 'core:dashboard'

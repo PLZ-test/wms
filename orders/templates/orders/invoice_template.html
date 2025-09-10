@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>송장 출력</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        @media print {
+            body { -webkit-print-color-adjust: exact; }
+        }
+        @page {
+            size: 150mm 100mm;
+            margin: 5mm;
+        }
+        body {
+            font-family: 'Malgun Gothic', 'Dotum', sans-serif;
+            font-size: 9pt;
+            line-height: 1.3;
+        }
+        .invoice-box {
+            border: 2px solid #000;
+            padding: 2mm;
+            width: 138mm;
+            height: 88mm;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            page-break-inside: avoid;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        td, th {
+            border: 1px solid #000;
+            padding: 3px;
+            vertical-align: middle;
+            text-align: center;
+            word-break: break-all;
+        }
+        .text-left { text-align: left; padding-left: 5px; }
+        .header-table .logo-cell { font-size: 18pt; font-weight: bold; border-right: 2px solid black; width: 60%; }
+        .header-table .side-cell { font-size: 11pt; font-weight: bold; }
+        .address-table .label { font-weight: bold; width: 15%; background-color: #f2f2f2; }
+        .address-table .content { height: 25px; vertical-align: top; }
+        .address-table .address { font-size: 10pt; font-weight: bold; }
+        .address-table .name { font-size: 11pt; font-weight: bold; }
+        .barcode-container { text-align: center; padding-top: 2px; border-top: 2px solid #000; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
+        .barcode-container svg { width: 90%; height: 40px; }
+    </style>
+</head>
+<body>
+    {% for order in orders %}
+    <div class="invoice-box">
+        <table class="header-table">
+            <tr>
+                <td class="logo-cell">WMS</td>
+                <td class="side-cell">일반</td>
+            </tr>
+        </table>
+
+        <table class="address-table" style="margin-top: 4px;">
+            <tr>
+                <td class="label">보내는<br>사람</td>
+                <td class="content text-left">
+                    {{ order.shipper.name }} / {{ order.shipper.contact }}<br>
+                    {{ order.shipper.center.address }}
+                </td>
+                <td class="label">상품명</td>
+                <td class="content text-left" rowspan="2">
+                    {% for item in order.items.all %}
+                        {{ item.product.name }} ({{ item.quantity }}개){% if not forloop.last %}<br>{% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+            <tr>
+                <td class="label">받는<br>사람</td>
+                <td class="content text-left">
+                    <div class="address">{{ order.address }}</div>
+                    <div class="name">{{ order.recipient_name }} / {{ order.recipient_phone }}</div>
+                </td>
+            </tr>
+             <tr>
+                <td class="label">배송<br>메시지</td>
+                <td class="content text-left" colspan="3">{{ order.delivery_memo|default:"-" }}</td>
+            </tr>
+        </table>
+        
+        <div class="barcode-container">
+            <svg class="barcode"
+                jsbarcode-format="CODE128"
+                jsbarcode-value="{{ order.order_no }}"
+                jsbarcode-displayValue="true"
+                jsbarcode-fontSize="16"
+                jsbarcode-textmargin="2">
+            </svg>
+        </div>
+    </div>
+    {% endfor %}
+
+    <script type="text/javascript">
+        try {
+            JsBarcode(".barcode").init();
+            window.onload = function() {
+                window.print();
+            }
+        } catch (e) {
+            // JsBarcode가 없는 경우 오류를 무시합니다.
+        }
+    </script>
+</body>
+</html>

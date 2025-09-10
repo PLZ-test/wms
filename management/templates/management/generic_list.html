@@ -1,0 +1,68 @@
+{% extends 'core/base.html' %}
+{% load static %} {# get_attribute 태그를 사용하기 위해 static 대신 templatetags를 로드해야 하지만, 별도 파일이 없으므로 임시로 유지. get_attribute.py를 core앱으로 옮겨야 함. #}
+{% comment %} TODO: get_attribute.py를 core/templatetags/ 폴더로 이동 후 {% load core_tags %} 등으로 변경 필요 {% endcomment %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="{% url 'management:dashboard' %}" class="btn btn-secondary">뒤로가기</a>
+    </div>
+    
+    <h1>{{ page_title }}</h1>
+    
+    {% if create_url %}
+    <div class="btn-group">
+        <a href="{{ create_url }}" class="btn btn-primary">등록</a>
+    </div>
+    {% else %}
+    <div class="btn-group"></div>
+    {% endif %}
+</div>
+<p>현재 필터: <strong>{{ selected_center|default:'전체 센터' }}</strong>, <strong>{{ selected_shipper|default:'전체 화주사' }}</strong></p>
+
+<table class="list-table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            {% for col in columns %}
+            <th>{{ col.header }}</th>
+            {% endfor %}
+            <th>관리</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in object_list %}
+        <tr>
+            <td data-label="ID">{{ forloop.counter }}</td>
+            {% for col in columns %}
+                <td data-label="{{ col.header }}">
+                    {% if col.key == 'center' %}
+                        {{ item.center.name }}
+                    {% elif col.key == 'shipper' %}
+                        {{ item.shipper.name }}
+                    {% else %}
+                        {{ item|getattr:col.key }}
+                    {% endif %}
+                </td>
+            {% endfor %}
+            <td data-label="관리">
+                <div class="action-buttons">
+                    {% if extra_actions %}
+                        {% for action in extra_actions %}
+                            <a href="{% url action.url_name item.pk %}" class="btn {{ action.class }}">{{ action.label }}</a>
+                        {% endfor %}
+                    {% endif %}
+                    {% if update_url_name %}
+                    <a href="{% url update_url_name item.pk %}" class="btn btn-primary">편집</a>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="{{ columns|length|add:2 }}" style="text-align: center;">데이터가 없습니다.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

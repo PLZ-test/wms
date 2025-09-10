@@ -1,0 +1,168 @@
+{% extends 'core/base.html' %}
+
+{% block extra_head %}
+<style>
+    .home-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 5vh 20px;
+        min-height: calc(100vh - var(--header-height) - 40px);
+        box-sizing: border-box;
+    }
+    .home-menu-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px;
+        width: 80%;
+        max-width: 1400px;
+    }
+    .menu-card {
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        padding: 30px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: block;
+        text-decoration: none;
+        color: inherit;
+    }
+    .menu-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+
+    .chart-container {
+        height: 220px;
+        position: relative;
+    }
+
+    .menu-card h2 {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #333;
+        margin: 0 0 15px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .menu-card h2 i {
+        margin-right: 12px;
+    }
+    .date-picker-input {
+        padding: 5px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 0.8em;
+        cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+        .home-menu-grid {
+            grid-template-columns: 1fr;
+            width: 90%;
+            gap: 20px;
+        }
+        .home-container {
+            padding: 20px 10px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: none;">
+    <h1>홈</h1>
+</div>
+
+<div class="home-container">
+    <div class="home-menu-grid">
+
+        {# 주문 관리 페이지로 링크 #}
+        <a href="{% url 'orders:manage' %}" class="menu-card">
+            <h2>
+                <span><i class="fas fa-shopping-cart"></i>주문</span>
+                <input type="text" id="order-datepicker" class="date-picker-input" placeholder="날짜 선택">
+            </h2>
+            <div class="chart-container">
+                <canvas id="dashboardOrderChart"></canvas>
+            </div>
+        </a>
+
+        {# 입출고 관리 페이지로 링크 #}
+        <a href="{% url 'stock:io' %}" class="menu-card">
+            <h2><i class="fas fa-exchange-alt"></i>입출고</h2>
+            <div class="chart-container" style="background-color: #f3f4f6; border-radius: 6px;"></div>
+        </a>
+
+        {# 정산 관리 페이지로 링크 #}
+        <a href="{% url 'settlement:status' %}" class="menu-card">
+            <h2><i class="fas fa-file-invoice-dollar"></i>정산</h2>
+            <div class="chart-container" style="background-color: #f3f4f6; border-radius: 6px;"></div>
+        </a>
+
+        {# 통합 관리 페이지로 링크 #}
+        <a href="{% url 'management:dashboard' %}" class="menu-card">
+            <h2><i class="fas fa-cog"></i>관리</h2>
+            <div class="chart-container" style="background-color: #f3f4f6; border-radius: 6px;"></div>
+        </a>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let orderChartInstance = null;
+
+    function updateOrderChart(startDate, endDate) {
+        // 차트 데이터 URL 변경
+        const url = `{% url 'orders:chart_data' %}?start=${startDate}&end=${endDate}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(chartData => {
+                const ctx = document.getElementById('dashboardOrderChart');
+                if (!ctx) return;
+
+                if (orderChartInstance) {
+                    orderChartInstance.destroy();
+                }
+
+                orderChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: chartData.datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { stepSize: 1 }
+                            }
+                        },
+                        plugins: {
+                            legend: { position: 'top' }
+                        },
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                    }
+                });
+            })
+            .catch(error => console.error('주문 차트 데이터 로딩 실패:', error));
+    }
+
+    if (window.initDatePicker) {
+        window.initDatePicker('order-datepicker', updateOrderChart);
+    } else {
+        console.error("initDatePicker 함수를 찾을 수 없습니다. main.js가 로드되었는지 확인하세요.");
+    }
+});
+</script>
+{% endblock %}
