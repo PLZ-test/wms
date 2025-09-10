@@ -31,7 +31,7 @@
         transform: translateY(-5px);
         box-shadow: 0 6px 12px rgba(0,0,0,0.1);
     }
-
+    
     .chart-container {
         height: 220px;
         position: relative;
@@ -56,7 +56,7 @@
         font-size: 0.8em;
         cursor: pointer;
     }
-
+    
     @media (max-width: 768px) {
         .home-menu-grid {
             grid-template-columns: 1fr;
@@ -77,7 +77,7 @@
 
 <div class="home-container">
     <div class="home-menu-grid">
-
+        
         {# 주문 관리 페이지로 링크 #}
         <a href="{% url 'orders:manage' %}" class="menu-card">
             <h2>
@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let orderChartInstance = null;
 
     function updateOrderChart(startDate, endDate) {
-        // 차트 데이터 URL 변경
+        // 차트 데이터 URL을 orders 앱의 것으로 변경
         const url = `{% url 'orders:chart_data' %}?start=${startDate}&end=${endDate}`;
 
         fetch(url)

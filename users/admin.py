@@ -21,5 +21,4 @@ class CustomUserAdmin(UserAdmin):
     search_fields = ('username', 'first_name', 'last_name', 'email')
     ordering = ('username',)
 
-# 관리자 사이트에 CustomUserAdmin 설정을 적용하여 User 모델을 등록
-admin.site.register(User, CustomUserAdmin)
+# admin.site.register(User, CustomUserAdmin) # 이 줄은 주석 처리된 상태로 둡니다.
