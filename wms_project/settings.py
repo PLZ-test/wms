@@ -96,3 +96,13 @@ AUTH_USER_MODEL = 'users.User'
 LOGIN_URL = 'users:login'
 LOGIN_REDIRECT_URL = 'core:dashboard'
 LOGOUT_REDIRECT_URL = 'users:login'
+
+# --- [추가] 캐시 설정 ---
+# 개발 환경에서는 간단한 로컬 메모리 캐시를 사용합니다.
+# 이 설정은 서버가 재시작될 때마다 캐시가 초기화됩니다.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}

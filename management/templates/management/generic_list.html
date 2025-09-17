@@ -1,6 +1,5 @@
 {% extends 'core/base.html' %}
-{% load static %} {# get_attribute 태그를 사용하기 위해 static 대신 templatetags를 로드해야 하지만, 별도 파일이 없으므로 임시로 유지. get_attribute.py를 core앱으로 옮겨야 함. #}
-{% comment %} TODO: get_attribute.py를 core/templatetags/ 폴더로 이동 후 {% load core_tags %} 등으로 변경 필요 {% endcomment %}
+{% load core_tags %} {# custom template tag 라이브러리를 로드합니다. #}
 
 {% block content %}
 <div class="page-header">
@@ -41,7 +40,8 @@
                     {% elif col.key == 'shipper' %}
                         {{ item.shipper.name }}
                     {% else %}
-                        {{ item|getattr:col.key }}
+                        {# === 바로 이 부분입니다! 'getattr'를 'get_attribute'로 수정합니다. === #}
+                        {{ item|get_attribute:col.key }} 
                     {% endif %}
                 </td>
             {% endfor %}

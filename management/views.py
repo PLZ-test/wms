@@ -26,7 +26,7 @@ def management_dashboard(request):
     return render(request, 'management/management_dashboard.html', context)
 
 # --- Center (센터) CRUD 뷰 ---
-
+# ... (이하 Center 관련 뷰는 변경 없음) ...
 class CenterListView(LoginRequiredMixin, ListView):
     model = Center
     template_name = 'management/generic_list.html'
@@ -95,11 +95,17 @@ class ShipperListView(LoginRequiredMixin, ListView):
             'create_url': reverse_lazy('management:shipper_create'),
             'update_url_name': 'management:shipper_update',
             'delete_url_name': 'management:shipper_delete',
-            'extra_actions': [{'label': '판매 상품', 'url_name': 'management:product_list', 'class': 'btn-info'}],
+            # --- [수정] 버튼 구성 변경 ---
+            'extra_actions': [
+                {'label': '상품 목록', 'url_name': 'management:product_list', 'class': 'btn-info'},
+                {'label': '상품 등록', 'url_name': 'management:product_create', 'class': 'btn-primary'}
+            ],
+            # --------------------------
             'active_menu': 'management'
         })
         return context
 
+# ... (이하 Shipper, Courier, Product 관련 뷰는 변경 없음) ...
 class ShipperCreateView(LoginRequiredMixin, CreateView):
     model = Shipper
     form_class = ShipperForm

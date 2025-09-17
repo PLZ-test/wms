@@ -56,6 +56,11 @@ class Product(models.Model):
     height = models.FloatField(default=0, verbose_name='높이(cm)')
     quantity = models.PositiveIntegerField(default=0, verbose_name='재고 수량')
     
+    # --- [추가] 파렛트 관련 필드 ---
+    products_per_pallet = models.PositiveIntegerField(default=0, verbose_name='파렛트 당 상품 수')
+    pallet_quantity = models.PositiveIntegerField(default=0, verbose_name='파렛트 수량')
+    # -----------------------------
+    
     class Meta:
         verbose_name = '상품'
         verbose_name_plural = '상품'

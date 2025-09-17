@@ -45,11 +45,16 @@ class ProductForm(forms.ModelForm):
     """
     class Meta:
         model = Product
-        fields = ['name', 'barcode', 'width', 'length', 'height']
+        # --- [수정] 폼에 포함될 필드 목록 변경 ---
+        fields = ['name', 'barcode', 'width', 'length', 'height', 'quantity', 'products_per_pallet', 'pallet_quantity']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'barcode': forms.TextInput(attrs={'class': 'form-control'}),
             'width': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '가로'}),
             'length': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '세로'}),
             'height': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '높이'}),
+            # --- [추가] 새로운 필드들의 위젯 설정 ---
+            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+            'products_per_pallet': forms.NumberInput(attrs={'class': 'form-control'}),
+            'pallet_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
         }

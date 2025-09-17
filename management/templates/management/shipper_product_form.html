@@ -2,7 +2,11 @@
 
 {% block content %}
 <div class="page-header">
+    <div>
+        <a href="{% if form.instance.pk %}{% url 'management:product_list' form.instance.shipper.pk %}{% else %}{% url 'management:product_list' shipper.pk %}{% endif %}" class="btn btn-secondary">뒤로가기</a>
+    </div>
     <h1>{{ page_title }}</h1>
+    <div class="btn-group"></div>
 </div>
 
 <div class="form-container">
@@ -29,6 +33,22 @@
                 {{ form.height }}
             </div>
         </div>
+
+        {# --- [추가] 새로운 필드 입력 칸 --- #}
+        <div class="form-group">
+            <label for="{{ form.quantity.id_for_label }}">재고 수량:</label>
+            {{ form.quantity }}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.products_per_pallet.id_for_label }}">파렛트 당 상품 수:</label>
+            {{ form.products_per_pallet }}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.pallet_quantity.id_for_label }}">파렛트 수량:</label>
+            {{ form.pallet_quantity }}
+        </div>
+        {# --------------------------------- #}
+
         {% if form.errors %}
             <div class="error-list" style="padding-left: 115px; color: var(--danger-color);">
                 {% for field, errors in form.errors.items %}
@@ -40,7 +60,6 @@
         {% endif %}
     </form>
     <div class="form-actions">
-        <a href="{% if form.instance.pk %}{% url 'management:product_list' form.instance.shipper.pk %}{% else %}{% url 'management:product_list' shipper.pk %}{% endif %}" class="btn btn-secondary">취소</a>
         
         {% if form.instance.pk %}
             {% if form.instance.quantity > 0 %}

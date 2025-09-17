@@ -1,8 +1,13 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
+{# --- [수정] 페이지 헤더 구조 변경 --- #}
 <div class="page-header">
+    <div>
+        <a href="{% url 'users:manage' %}" class="btn btn-secondary">뒤로가기</a>
+    </div>
     <h1>{{ page_title }}</h1>
+    <div class="btn-group"></div>
 </div>
 
 <div class="form-container">
@@ -30,7 +35,7 @@
     </form>
 
     <div class="form-actions" style="padding-left: 0;">
-        <a href="{% url 'users:manage' %}" class="btn btn-secondary">취소</a>
+        {# 상단으로 이동했으므로 하단에서는 삭제 #}
         <button type="submit" class="btn btn-primary" form="main-form">수정 완료</button>
     </div>
 </div>
