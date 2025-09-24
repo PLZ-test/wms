@@ -116,7 +116,8 @@
             <h2>상품 관리</h2>
         </div>
         <div class="mgmt-card-actions">
-            <a href="{% url 'management:shipper_list' %}" class="btn btn-primary">상품 등록하기</a>
+            {# --- [수정] 버튼 텍스트를 '등록'으로, 링크를 새로운 URL로 변경 --- #}
+            <a href="{% url 'management:product_create_direct' %}" class="btn btn-primary">등록</a>
             <a href="{% url 'stock:manage' %}" class="btn btn-info">재고 현황 보기</a>
         </div>
     </div>

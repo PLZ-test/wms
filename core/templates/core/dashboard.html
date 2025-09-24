@@ -78,7 +78,6 @@
 <div class="home-container">
     <div class="home-menu-grid">
         
-        {# 주문 관리 페이지로 링크 #}
         <a href="{% url 'orders:manage' %}" class="menu-card">
             <h2>
                 <span><i class="fas fa-shopping-cart"></i>주문</span>
@@ -89,19 +88,22 @@
             </div>
         </a>
 
-        {# 입출고 관리 페이지로 링크 #}
-        <a href="{% url 'stock:io' %}" class="menu-card">
-            <h2><i class="fas fa-exchange-alt"></i>입출고</h2>
-            <div class="chart-container" style="background-color: #f3f4f6; border-radius: 6px;"></div>
+        {# [수정] 입출고 카드 링크 및 차트 요소 변경 #}
+        <a href="{% url 'stock:in_bound' %}" class="menu-card">
+            <h2>
+                <span><i class="fas fa-exchange-alt"></i>입출고</span>
+                <input type="text" id="stock-datepicker" class="date-picker-input" placeholder="날짜 선택">
+            </h2>
+            <div class="chart-container">
+                <canvas id="dashboardStockChart"></canvas>
+            </div>
         </a>
 
-        {# 정산 관리 페이지로 링크 #}
         <a href="{% url 'settlement:status' %}" class="menu-card">
             <h2><i class="fas fa-file-invoice-dollar"></i>정산</h2>
             <div class="chart-container" style="background-color: #f3f4f6; border-radius: 6px;"></div>
         </a>
 
-        {# 통합 관리 페이지로 링크 #}
         <a href="{% url 'management:dashboard' %}" class="menu-card">
             <h2><i class="fas fa-cog"></i>관리</h2>
             <div class="chart-container" style="background-color: #f3f4f6; border-radius: 6px;"></div>
@@ -115,51 +117,43 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let orderChartInstance = null;
+    let stockChartInstance = null; // [추가] 재고 차트 인스턴스 변수
 
     function updateOrderChart(startDate, endDate) {
-        // 차트 데이터 URL을 orders 앱의 것으로 변경
         const url = `{% url 'orders:chart_data' %}?start=${startDate}&end=${endDate}`;
-
         fetch(url)
             .then(response => response.json())
             .then(chartData => {
                 const ctx = document.getElementById('dashboardOrderChart');
                 if (!ctx) return;
-
-                if (orderChartInstance) {
-                    orderChartInstance.destroy();
-                }
-
+                if (orderChartInstance) orderChartInstance.destroy();
                 orderChartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: chartData.labels,
-                        datasets: chartData.datasets
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { stepSize: 1 }
-                            }
-                        },
-                        plugins: {
-                            legend: { position: 'top' }
-                        },
-                        interaction: {
-                            mode: 'index',
-                            intersect: false,
-                        },
-                    }
+                    type: 'line', data: chartData,
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { position: 'top' } }, interaction: { mode: 'index', intersect: false } }
                 });
-            })
-            .catch(error => console.error('주문 차트 데이터 로딩 실패:', error));
+            }).catch(error => console.error('주문 차트 데이터 로딩 실패:', error));
     }
+    
+    // [신규] 재고 차트 업데이트 함수
+    function updateStockChart(startDate, endDate) {
+        const url = `{% url 'stock:chart_data_api' %}?start=${startDate}&end=${endDate}`;
+        fetch(url)
+            .then(response => response.json())
+            .then(chartData => {
+                const ctx = document.getElementById('dashboardStockChart');
+                if (!ctx) return;
+                if (stockChartInstance) stockChartInstance.destroy();
+                stockChartInstance = new Chart(ctx, {
+                    type: 'line', data: chartData,
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'top' } }, interaction: { mode: 'index', intersect: false } }
+                });
+            }).catch(error => console.error('재고 차트 데이터 로딩 실패:', error));
+    }
+
 
     if (window.initDatePicker) {
         window.initDatePicker('order-datepicker', updateOrderChart);
+        window.initDatePicker('stock-datepicker', updateStockChart); // [추가] 재고 datepicker 초기화
     } else {
         console.error("initDatePicker 함수를 찾을 수 없습니다. main.js가 로드되었는지 확인하세요.");
     }

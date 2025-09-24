@@ -26,7 +26,8 @@ urlpatterns = [
     path('', include('core.urls', namespace='core')),
 ]
 
-# [수정] 개발 환경(DEBUG=True)에서 static 파일을 올바르게 처리하기 위한 설정입니다.
-# 이 설정이 없으면 CSS나 JavaScript 파일이 로드되지 않을 수 있습니다.
+# [수정] 개발 환경(DEBUG=True)에서 static 및 media 파일을 올바르게 처리하기 위한 설정입니다.
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
+    # [추가] 사용자가 업로드한 미디어 파일(예: 도면 이미지)을 서빙하기 위한 URL 패턴
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

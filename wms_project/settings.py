@@ -12,8 +12,6 @@ DEBUG = True
 ALLOWED_HOSTS = ['*', '127.0.0.1', 'localhost', '192.168.2.116', '192.168.2.121', '192.168.2.127', '192.168.2.129']
 
 # Application definition
-# [수정] INSTALLED_APPS 목록을 각 앱의 설정 클래스(apps.py) 전체 경로로 명시합니다.
-# 이 부분이 가장 중요합니다.
 INSTALLED_APPS = [
     # Custom Apps
     'core.apps.CoreConfig',
@@ -31,7 +29,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 ]
-# ---------------------------------------------------
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -97,12 +94,17 @@ LOGIN_URL = 'users:login'
 LOGIN_REDIRECT_URL = 'core:dashboard'
 LOGOUT_REDIRECT_URL = 'users:login'
 
-# --- [추가] 캐시 설정 ---
-# 개발 환경에서는 간단한 로컬 메모리 캐시를 사용합니다.
-# 이 설정은 서버가 재시작될 때마다 캐시가 초기화됩니다.
+# 캐시 설정
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         'LOCATION': 'unique-snowflake',
     }
 }
+
+# --- [신규] 미디어 파일(사용자 업로드 파일) 설정 ---
+# 사용자가 업로드한 파일(예: 도면 이미지)에 웹에서 접근할 때 사용할 URL 경로
+MEDIA_URL = '/media/'
+
+# 사용자가 업로드한 파일을 실제 서버 컴퓨터의 어느 폴더에 저장할지 경로를 지정
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

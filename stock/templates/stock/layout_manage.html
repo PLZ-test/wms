@@ -1,0 +1,68 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div><a href="{% url 'stock:in_bound' %}" class="btn btn-secondary">입고 페이지로 돌아가기</a></div>
+    <h1>도면 관리</h1>
+    <div class="btn-group"></div>
+</div>
+
+{% if messages %}{% for message in messages %}<p class="message {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
+
+<div class="inbound-container" style="grid-template-columns: 1fr 1fr; gap: 30px;">
+    
+    <div class="form-container" style="margin-top: 0;">
+        <h3>신규 도면 등록</h3>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+                {{ field }}
+            </div>
+            {% if field.errors %}
+                <div class="error-list" style="padding-left: 115px; color: var(--danger-color);">{{ field.errors }}</div>
+            {% endif %}
+            {% endfor %}
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">등록하기</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="list-container">
+        <h3>등록된 도면 목록</h3>
+        <table class="list-table">
+            <thead>
+                <tr>
+                    <th>센터</th>
+                    <th>도면명</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for layout in layouts %}
+                <tr>
+                    <td data-label="센터">{{ layout.center.name }}</td>
+                    <td data-label="도면명">{{ layout.name }}</td>
+                    <td data-label="관리">
+                        <div class="action-buttons" style="flex-direction: column;">
+                            <a href="{% url 'stock:layout_editor' layout.id %}" class="btn btn-info" style="margin-bottom: 5px;">위치 편집</a>
+                            <form method="post" onsubmit="return confirm('정말 삭제하시겠습니까? 위치 정보도 모두 삭제됩니다.');">
+                                {% csrf_token %}
+                                <input type="hidden" name="layout_id" value="{{ layout.id }}">
+                                <button type="submit" name="delete_layout" class="btn btn-danger">삭제</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="text-align: center;">등록된 도면이 없습니다.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

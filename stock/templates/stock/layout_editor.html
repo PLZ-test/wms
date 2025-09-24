@@ -1,0 +1,155 @@
+{% extends 'core/base.html' %}
+
+{% block extra_head %}
+<style>
+    #layout-editor {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    #layout-container { position: relative; display: inline-block; user-select: none; }
+    #layout-image { max-width: 100%; height: auto; display: block; }
+    .new-location-rect { position: absolute; border: 2px dashed #ff0000; background-color: rgba(255, 0, 0, 0.2); box-sizing: border-box; }
+    .location-box { position: absolute; border: 2px solid #007bff; background-color: rgba(0, 123, 255, 0.3); color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; box-sizing: border-box; font-size: 12px; text-shadow: 1px 1px 2px #000; }
+    .location-box:hover { background-color: rgba(0, 123, 255, 0.5); border-color: #0056b3; }
+    .location-box.selected { border-color: #28a745; background-color: rgba(40, 167, 69, 0.5); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><a href="{% url 'stock:in_bound' %}" class="btn btn-secondary">뒤로가기</a></div>
+    <h1>{{ page_title }}</h1>
+    <div class="btn-group"></div>
+</div>
+
+<div id="layout-editor">
+    <p><strong>사용법:</strong><br>
+        - <strong>생성:</strong> 도면 위에서 마우스로 드래그하여 새 위치를 지정하세요.<br>
+        - <strong>수정:</strong> 기존 위치를 클릭 후 나타나는 프롬프트 창에서 새 이름을 입력하세요.<br>
+        - <strong>삭제:</strong> 삭제할 위치를 클릭하여 선택한 후, 키보드의 'Delete' 키를 누르세요.
+    </p>
+    <div id="layout-container">
+        <img id="layout-image" src="{{ layout.image.url }}" alt="{{ layout.name }}">
+        {# JavaScript로 위치 박스들이 여기에 그려집니다. #}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('layout-container');
+    const image = document.getElementById('layout-image');
+    const layoutId = "{{ layout.pk }}";
+    const apiUrl = `/stock/api/layout/${layoutId}/locations/`;
+    const csrfToken = "{{ csrf_token }}";
+
+    let isDrawing = false, startX, startY, rectDiv = null, selectedLocation = null;
+
+    const apiCall = (method, data) => {
+        return fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ ...data, action: method })
+        }).then(response => response.json());
+    };
+
+    const renderLocations = (locations) => {
+        container.querySelectorAll('.location-box').forEach(box => box.remove());
+        locations.forEach(loc => {
+            const box = document.createElement('div');
+            box.className = 'location-box';
+            box.textContent = loc.name;
+            box.style.left = `${loc.x_coord}%`;
+            box.style.top = `${loc.y_coord}%`;
+            box.style.width = `${loc.width}%`;
+            box.style.height = `${loc.height}%`;
+            Object.assign(box.dataset, { locationId: loc.id, ...loc });
+            box.addEventListener('click', (e) => handleLocationClick(e, box, loc));
+            container.appendChild(box);
+        });
+    };
+
+    const loadLocations = () => fetch(apiUrl).then(res => res.json()).then(renderLocations);
+
+    const handleLocationClick = (e, box, loc) => {
+        e.stopPropagation();
+        if (selectedLocation) selectedLocation.classList.remove('selected');
+        selectedLocation = box;
+        selectedLocation.classList.add('selected');
+        const newName = prompt(`'${loc.name}'의 새 이름을 입력하세요 (비워두면 이름 변경 안함).`, loc.name);
+        if (newName && newName.trim() !== '' && newName !== loc.name) {
+            apiCall('save', { ...loc, name: newName.trim() }).then(handleApiResponse);
+        }
+    };
+
+    const handleApiResponse = (result) => {
+        if (result.status === 'success') {
+            loadLocations();
+        } else {
+            alert('오류: ' + result.message);
+        }
+        selectedLocation = null;
+    };
+
+    container.addEventListener('mousedown', (e) => {
+        if (e.target !== image) return;
+        if (selectedLocation) selectedLocation.classList.remove('selected');
+        selectedLocation = null;
+        isDrawing = true;
+        const rect = image.getBoundingClientRect();
+        startX = e.clientX - rect.left;
+        startY = e.clientY - rect.top;
+        rectDiv = document.createElement('div');
+        rectDiv.className = 'new-location-rect';
+        rectDiv.style.left = `${startX}px`;
+        rectDiv.style.top = `${startY}px`;
+        container.appendChild(rectDiv);
+    });
+
+    container.addEventListener('mousemove', (e) => {
+        if (!isDrawing) return;
+        const rect = image.getBoundingClientRect();
+        const currentX = e.clientX - rect.left, currentY = e.clientY - rect.top;
+        const width = Math.abs(currentX - startX), height = Math.abs(currentY - startY);
+        const newX = Math.min(currentX, startX), newY = Math.min(currentY, startY);
+        Object.assign(rectDiv.style, { left: `${newX}px`, top: `${newY}px`, width: `${width}px`, height: `${height}px` });
+    });
+
+    container.addEventListener('mouseup', (e) => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        const finalWidth = parseFloat(rectDiv.style.width), finalHeight = parseFloat(rectDiv.style.height);
+        const finalX = parseFloat(rectDiv.style.left), finalY = parseFloat(rectDiv.style.top);
+        container.removeChild(rectDiv);
+        rectDiv = null;
+
+        if (finalWidth < 5 || finalHeight < 5) return;
+        
+        const locationName = prompt('새 위치의 이름을 입력하세요:');
+        if (locationName && locationName.trim() !== '') {
+            const imgWidth = image.offsetWidth, imgHeight = image.offsetHeight;
+            const rectData = {
+                name: locationName.trim(),
+                x_coord: (finalX / imgWidth) * 100, y_coord: (finalY / imgHeight) * 100,
+                width: (finalWidth / imgWidth) * 100, height: (finalHeight / imgHeight) * 100
+            };
+            apiCall('save', rectData).then(handleApiResponse);
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Delete' && selectedLocation) {
+            if (confirm(`'${selectedLocation.dataset.locationName}' 위치를 삭제하시겠습니까?`)) {
+                apiCall('delete', { id: selectedLocation.dataset.locationId }).then(handleApiResponse);
+            }
+        }
+    });
+
+    if (image.complete) loadLocations();
+    else image.onload = loadLocations;
+});
+</script>
+{% endblock %}

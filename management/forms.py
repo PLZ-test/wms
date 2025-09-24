@@ -58,3 +58,28 @@ class ProductForm(forms.ModelForm):
             'products_per_pallet': forms.NumberInput(attrs={'class': 'form-control'}),
             'pallet_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
         }
+
+# --- [추가] 대시보드에서 직접 상품을 등록하기 위한 새로운 폼 ---
+class ProductCreateDirectForm(forms.ModelForm):
+    """
+    대시보드에서 화주사를 선택하며 상품을 바로 등록하기 위한 폼
+    """
+    class Meta:
+        model = Product
+        # 기존 ProductForm 필드에 'shipper' 필드를 추가합니다.
+        fields = ['shipper', 'name', 'barcode', 'width', 'length', 'height', 'quantity', 'products_per_pallet', 'pallet_quantity']
+        widgets = {
+            'shipper': forms.Select(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'barcode': forms.TextInput(attrs={'class': 'form-control'}),
+            'width': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '가로'}),
+            'length': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '세로'}),
+            'height': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '높이'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+            'products_per_pallet': forms.NumberInput(attrs={'class': 'form-control'}),
+            'pallet_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'shipper': '화주사 선택' # 화주사 필드의 라벨을 지정합니다.
+        }
+# -----------------------------------------------------------

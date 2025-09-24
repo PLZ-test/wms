@@ -31,4 +31,7 @@ urlpatterns = [
     path('shippers/<int:shipper_pk>/products/new/', views.product_create_view, name='product_create'),
     path('products/<int:pk>/edit/', views.product_update_view, name='product_update'),
     path('products/<int:pk>/delete/', views.product_delete_view, name='product_delete'),
+    
+    # --- [추가] 대시보드에서 직접 상품을 등록하는 URL ---
+    path('products/new-direct/', views.product_create_direct_view, name='product_create_direct'),
 ]

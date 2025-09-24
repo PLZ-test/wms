@@ -1,0 +1,72 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        {# 대시보드의 상품 관리 메뉴로 돌아가도록 링크 수정 #}
+        <a href="{% url 'management:dashboard' %}" class="btn btn-secondary">뒤로가기</a>
+    </div>
+    <h1>{{ page_title }}</h1>
+    <div class="btn-group"></div>
+</div>
+
+<div class="form-container">
+    <form id="product-form" method="post">
+        {% csrf_token %}
+        
+        {# 화주사 선택 필드를 맨 위에 추가 #}
+        <div class="form-group">
+            <label for="{{ form.shipper.id_for_label }}">{{ form.shipper.label }}:</label>
+            {{ form.shipper }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.name.id_for_label }}">상품명:</label>
+            {{ form.name }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.barcode.id_for_label }}">바코드:</label>
+            {{ form.barcode }}
+        </div>
+        
+        <div class="form-group">
+            <label>크기 (cm):</label>
+            <div class="size-input-group">
+                {{ form.width }}
+                <span>x</span>
+                {{ form.length }}
+                <span>x</span>
+                {{ form.height }}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.quantity.id_for_label }}">재고 수량:</label>
+            {{ form.quantity }}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.products_per_pallet.id_for_label }}">파렛트 당 상품 수:</label>
+            {{ form.products_per_pallet }}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.pallet_quantity.id_for_label }}">파렛트 수량:</label>
+            {{ form.pallet_quantity }}
+        </div>
+
+        {% if form.errors %}
+            <div class="error-list" style="padding-left: 115px; color: var(--danger-color);">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        {% endif %}
+    </form>
+    <div class="form-actions">
+        {# 등록 버튼만 남김 #}
+        <button type="submit" class="btn btn-primary" form="product-form">등록</button>
+    </div>
+</div>
+{% endblock %}

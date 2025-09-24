@@ -2,7 +2,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
-from django.db.models import Count, Q
+from django.db.models import Count, Q, F # [수정] F객체 추가
 from datetime import datetime, date, timedelta
 from django.db.models.functions import TruncDate
 from django.db import transaction
@@ -13,9 +13,11 @@ import openpyxl
 import json
 
 from management.models import Shipper, Product, SalesChannel
+from stock.models import StockMovement # [추가] StockMovement 모델 import
 from .models import Order, OrderItem
 from .forms import OrderUpdateForm
 
+# ... (order_manage_view, order_list_success_view 등 다른 뷰는 그대로 유지) ...
 @login_required
 def order_manage_view(request):
     """
@@ -29,7 +31,6 @@ def order_manage_view(request):
     success_count = orders_for_date.exclude(order_status='ERROR').count()
     error_count_db = orders_for_date.filter(order_status='ERROR').count()
     
-    # 세션에 임시 저장된 오류 건수 (파일 처리 직후)
     temp_errors_count = len(request.session.get('temp_errors', []))
     total_count = success_count + error_count_db + temp_errors_count
     error_count = error_count_db + temp_errors_count
@@ -57,7 +58,6 @@ def order_list_success_view(request, date_str):
     target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
     orders = Order.objects.filter(order_date__date=target_date).exclude(order_status='ERROR').prefetch_related('items__product')
     
-    # 모달에서 상세 정보를 보여주기 위한 JSON 데이터 생성
     orders_json = []
     for order in orders:
         items = [{'product_name': item.product.name, 'quantity': item.quantity} for item in order.items.all()]
@@ -79,7 +79,6 @@ def order_list_error_view(request, date_str):
     target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
     processed_errors = []
 
-    # DB에 'ERROR' 상태로 저장된 주문들을 가져와 가공
     db_error_orders = Order.objects.filter(order_date__date=target_date, order_status='ERROR')
     for order in db_error_orders:
         error_details = {}
@@ -105,7 +104,6 @@ def order_list_error_view(request, date_str):
             'error_fields': error_details.get('error_fields', []),
         })
 
-    # 엑셀 파일 처리 직후 DB에 저장되지 않고 세션에 임시 저장된 오류들을 가져와 가공
     temp_errors = request.session.pop('temp_errors', [])
     for error in temp_errors:
         original_data = error.get('original_data', {})
@@ -142,14 +140,13 @@ def order_update_view(request, order_pk):
         form = OrderUpdateForm(request.POST, instance=order)
         if form.is_valid():
             updated_order = form.save(commit=False)
-            updated_order.error_message = "" # 오류 메시지 초기화
-            updated_order.order_status = 'PENDING' # 상태를 '주문접수'로 변경
+            updated_order.error_message = ""
+            updated_order.order_status = 'PENDING'
             updated_order.save()
             messages.success(request, f"주문({order.order_no})이 성공적으로 수정되었습니다.")
             date_str = order.order_date.strftime('%Y-%m-%d')
             return redirect('orders:list_error', date_str=date_str)
     else:
-        # 오류 주문의 원본 데이터를 폼에 초기값으로 설정
         try:
             error_details = json.loads(order.error_message)
             initial_data = error_details.get('original_data', {})
@@ -161,31 +158,60 @@ def order_update_view(request, order_pk):
     context = { 'page_title': '오류 주문 수정', 'form': form, 'order': order }
     return render(request, 'orders/order_update_form.html', context)
 
+
 @login_required
 @require_POST
+@transaction.atomic # [추가] 데이터베이스 트랜잭션 적용
 def order_invoice_view(request):
     """
-    송장 출력 뷰
+    송장 출력 및 자동 출고 처리 뷰
     """
     order_ids_str = request.POST.get('order_ids', '')
     if not order_ids_str:
         return HttpResponse("출력할 주문이 선택되지 않았습니다.", status=400)
     
     order_ids = [int(id) for id in order_ids_str.split(',')]
-    orders = Order.objects.filter(id__in=order_ids).select_related('shipper__center').prefetch_related('items__product')
+    # [수정] 출고 처리가 아직 안된 주문만 대상으로 함
+    orders = Order.objects.filter(
+        id__in=order_ids, 
+        order_status__in=['PENDING', 'PROCESSING']
+    ).select_related('shipper__center').prefetch_related('items__product')
     
     if not orders:
-        return HttpResponse("유효한 주문을 찾을 수 없습니다.", status=404)
+        return HttpResponse("출력할 주문이 없거나 이미 처리된 주문입니다.", status=404)
         
+    # --- [신규] 자동 출고 처리 로직 ---
+    for order in orders:
+        for item in order.items.all():
+            product = item.product
+            # 1. 재고 수량 확인
+            if product.quantity < item.quantity:
+                messages.error(request, f"재고 부족: '{product.name}'의 출고를 처리할 수 없습니다. (현재 재고: {product.quantity})")
+                # 트랜잭션을 롤백하고 함수를 종료
+                transaction.set_rollback(True)
+                # 이전 페이지로 리디렉션
+                return redirect(request.META.get('HTTP_REFERER', 'orders:manage'))
+
+            # 2. 재고 수량 차감
+            product.quantity = F('quantity') - item.quantity
+            product.save()
+
+            # 3. 출고 기록(StockMovement) 생성
+            StockMovement.objects.create(
+                product=product,
+                movement_type='OUT',
+                quantity=item.quantity,
+                memo=f'주문 출고 ({order.order_no})'
+            )
+    # ------------------------------------
+
     # 송장 출력 시 주문 상태를 '출고완료'로 변경
-    Order.objects.filter(id__in=order_ids).update(order_status='SHIPPED')
+    orders.update(order_status='SHIPPED')
     
     context = {'orders': orders}
     return render(request, 'orders/invoice_template.html', context)
 
-
-# --- API 뷰 ---
-
+# ... (이하 API 뷰들은 그대로 유지) ...
 @login_required
 @require_POST
 @transaction.atomic

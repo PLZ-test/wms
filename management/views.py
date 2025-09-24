@@ -7,7 +7,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest
 
 from .models import Center, Shipper, Courier, Product
-from .forms import CenterForm, ShipperForm, CourierForm, ProductForm
+# --- [수정] ProductCreateDirectForm을 import 목록에 추가 ---
+from .forms import CenterForm, ShipperForm, CourierForm, ProductForm, ProductCreateDirectForm
 
 
 @login_required
@@ -255,3 +256,27 @@ def product_delete_view(request, pk):
         return redirect('management:product_list', shipper_pk=shipper_pk)
     # POST 요청이 아닐 경우 잘못된 요청으로 처리
     return HttpResponseBadRequest("잘못된 요청입니다.")
+
+# --- [추가] 대시보드에서 직접 상품을 등록하는 새로운 뷰 ---
+@login_required
+def product_create_direct_view(request):
+    """
+    대시보드에서 화주사 선택 후 바로 상품을 등록하는 뷰
+    """
+    if request.method == 'POST':
+        form = ProductCreateDirectForm(request.POST)
+        if form.is_valid():
+            form.save()
+            # 상품 등록 성공 후 재고 현황 페이지로 이동
+            return redirect('stock:manage')
+    else:
+        form = ProductCreateDirectForm()
+    
+    context = {
+        'form': form,
+        'page_title': '상품 등록',
+        'active_menu': 'management'
+    }
+    # 새로운 템플릿 파일을 사용
+    return render(request, 'management/product_create_direct.html', context)
+# --------------------------------------------------------

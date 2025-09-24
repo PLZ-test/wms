@@ -1,0 +1,205 @@
+{% extends 'core/base.html' %}
+
+{% block extra_head %}
+<style>
+    /* 도면 표시 영역 스타일 */
+    #layout-display { 
+        background-color: #fff; 
+        padding: 20px; 
+        border-radius: 8px; 
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        box-sizing: border-box;
+    }
+    #layout-container { 
+        position: relative; 
+        display: inline-block; 
+        user-select: none; 
+        width: 100%;
+    }
+    #layout-image { 
+        max-width: 100%; 
+        height: auto; 
+        display: block; 
+    }
+    /* 도면 위 위치(렉) 박스 스타일 */
+    .location-box {
+        position: absolute;
+        border: 2px solid #007bff;
+        background-color: rgba(0, 123, 255, 0.3);
+        color: #fff;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-sizing: border-box;
+        font-size: 12px;
+        text-shadow: 1px 1px 2px #000;
+        transition: background-color 0.2s, border-color 0.2s;
+    }
+    .location-box:hover { 
+        background-color: rgba(0, 123, 255, 0.5); 
+    }
+
+    /* --- 모달창(팝업) 스타일 --- */
+    .modal {
+        display: none; /* 평소에는 숨김 */
+        position: fixed; /* 화면 스크롤과 무관하게 고정 */
+        z-index: 1002;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.6); /* 뒷배경 어둡게 처리 */
+    }
+    .modal-content {
+        position: relative;
+        background-color: #fefefe;
+        margin: 15% auto; /* 화면 중앙에 위치시키기 */
+        padding: 0;
+        border-radius: 8px;
+        width: 80%;
+        max-width: 500px;
+        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+        animation: animatetop 0.4s; /* 나타날 때 부드러운 애니메이션 효과 */
+    }
+    /* 모달 애니메이션 */
+    @keyframes animatetop {
+        from {top: -300px; opacity: 0}
+        to {top: 0; opacity: 1}
+    }
+    .modal-header {
+        padding: 16px;
+        background-color: var(--accent-color);
+        color: white;
+        border-radius: 8px 8px 0 0;
+    }
+    .modal-header h2 { 
+        margin: 0; 
+        font-size: 1.2em; 
+    }
+    .modal-body { 
+        padding: 20px; 
+    }
+    .close-btn {
+        color: #fff;
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .close-btn:hover, .close-btn:focus { 
+        color: #f1f1f1; 
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><a href="{% url 'core:dashboard' %}" class="btn btn-secondary">뒤로가기</a></div>
+    <h1>재고 입고</h1>
+    <div class="btn-group">
+        <a href="{% url 'stock:layout_manage' %}" class="btn btn-primary">도면 관리</a>
+        {% if layout %}
+            <a href="{% url 'stock:layout_editor' layout.id %}" class="btn btn-info">위치 편집하기</a>
+        {% endif %}
+        <a href="{% url 'stock:history' %}" class="btn btn-secondary">입출고 기록 보기</a>
+    </div>
+</div>
+
+<p>현재 필터: <strong>{{ selected_center|default:'전체 센터' }}</strong>, <strong>{{ selected_shipper|default:'전체 화주사' }}</strong></p>
+{% if messages %}{% for message in messages %}<p class="message {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
+
+<div id="layout-display">
+    <h3>{{ status_message }}</h3>
+    {% if layout %}
+        <div id="layout-container">
+            <img id="layout-image" src="{{ layout.image.url }}" alt="{{ layout.name }}">
+        </div>
+    {% endif %}
+</div>
+
+<div id="inbound-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="close-btn">&times;</span>
+            <h2 id="modal-title">입고 처리</h2>
+        </div>
+        <div class="modal-body">
+            <div class="form-container" style="margin: 0; box-shadow: none; padding: 0;">
+                <form id="stock-in-form" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="location" id="id_location">
+                    <div class="form-group"><label for="{{ form.product.id_for_label }}">{{ form.product.label }}:</label>{{ form.product }}</div>
+                    <div class="form-group"><label for="{{ form.quantity.id_for_label }}">{{ form.quantity.label }}:</label>{{ form.quantity }}</div>
+                    <div class="form-group"><label for="{{ form.memo.id_for_label }}">{{ form.memo.label }}:</label>{{ form.memo }}</div>
+                    {% if form.errors %}
+                    <div class="error-list" style="padding-left: 0; color: var(--danger-color); text-align: left;">
+                        {% for field, errors in form.errors.items %}<p>{{ field.label }}: {{ errors.as_text }}</p>{% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="form-actions" style="padding-left: 0;"><button type="submit" class="btn btn-primary">입고 처리</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ locations_json|json_script:"locations-data" }}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("--- WMS 입고 페이지 디버깅 시작 ---");
+
+    const container = document.getElementById('layout-container');
+    const image = document.getElementById('layout-image');
+    const modal = document.getElementById('inbound-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const closeBtn = document.querySelector('.close-btn');
+    const hiddenLocationInput = document.getElementById('id_location');
+
+    if (image) {
+        console.log("[성공] 도면 이미지가 페이지에 존재합니다.");
+        try {
+            const locationsData = JSON.parse(document.getElementById('locations-data').textContent);
+            console.log("[확인] 서버로부터 받은 위치 데이터:", locationsData);
+
+            if (locationsData && locationsData.length > 0) {
+                console.log(`[정보] 총 ${locationsData.length}개의 위치를 도면에 그리기 시작합니다.`);
+                locationsData.forEach(loc => {
+                    const box = document.createElement('div');
+                    box.className = 'location-box';
+                    box.textContent = loc.name;
+                    box.style.left = `${loc.x_coord}%`;
+                    box.style.top = `${loc.y_coord}%`;
+                    box.style.width = `${loc.width}%`;
+                    box.style.height = `${loc.height}%`;
+                    box.addEventListener('click', () => {
+                        hiddenLocationInput.value = loc.id;
+                        modalTitle.textContent = `'${loc.name}' 위치에 입고 처리`;
+                        modal.style.display = "block";
+                    });
+                    container.appendChild(box);
+                });
+            } else {
+                console.warn("[경고] 위치 데이터가 비어있습니다. [위치 편집]에서 위치를 그리고 저장했는지 확인하세요.");
+            }
+        } catch (e) {
+            console.error("[오류] 서버에서 받은 위치 데이터를 처리하는 중 문제가 발생했습니다.", e);
+        }
+    } else {
+        console.log("[정보] 도면 이미지가 없어 위치를 그리지 않습니다.");
+    }
+
+    if (modal) {
+        closeBtn.onclick = () => { modal.style.display = "none"; }
+        window.onclick = (event) => { if (event.target == modal) { modal.style.display = "none"; } }
+    }
+});
+</script>
+{% endblock %}
