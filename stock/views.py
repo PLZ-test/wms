@@ -16,30 +16,32 @@ from .forms import StockInForm, StockUpdateForm, WarehouseLayoutForm
 @transaction.atomic
 def stock_in_view(request):
     """
-    재고 입고 페이지 뷰 (도면 '사용' 기능)
+    재고 입고 페이지 뷰 (도면 기반 UI)
     - GET: 선택된 센터의 도면과 위치 정보를 불러와 페이지를 렌더링합니다.
     - POST: 모달 폼에서 제출된 입고 정보를 처리합니다.
     """
     selected_center_name = request.session.get('selected_center')
     center = None
     layout = None
-    locations_json = "[]"
-    
-    # 사용자에게 상황을 명확히 알려주기 위한 상태 메시지 변수
+    locations_json = "[]" # 위치 정보를 담을 JSON 배열
     status_message = ""
 
     if selected_center_name:
         center = Center.objects.filter(name=selected_center_name).first()
         if center:
             try:
-                # 선택된 센터에 해당하는 도면을 찾습니다.
+                # 1. 선택된 센터에 해당하는 도면을 찾습니다.
                 layout = WarehouseLayout.objects.get(center=center)
-                # 해당 도면에 그려진 위치들을 모두 찾습니다.
+                # 2. 해당 도면에 그려진 위치들을 모두 찾습니다.
                 locations = Location.objects.filter(layout=layout)
                 
                 if locations.exists():
-                    # [성공!] 도면과 위치가 모두 존재할 경우
-                    locations_data = [{'id': loc.id, 'name': loc.name, 'x_coord': loc.x_coord, 'y_coord': loc.y_coord, 'width': loc.width, 'height': loc.height} for loc in locations]
+                    # 3. 위치 데이터를 JSON으로 변환하여 템플릿에 전달합니다.
+                    locations_data = [
+                        {'id': loc.id, 'name': loc.name, 'x_coord': loc.x_coord, 
+                         'y_coord': loc.y_coord, 'width': loc.width, 'height': loc.height} 
+                        for loc in locations
+                    ]
                     locations_json = json.dumps(locations_data)
                     status_message = f"'{center.name}'의 '{layout.name}' 도면이 로드되었습니다. 입고할 위치를 클릭하세요."
                 else:
@@ -52,44 +54,66 @@ def stock_in_view(request):
         # 상단 필터에서 '전체 센터'가 선택된 경우
         status_message = "입고 작업을 진행할 센터를 상단 필터에서 먼저 선택해주세요."
 
-
     if request.method == 'POST':
-        form = StockInForm(request.POST, center_id=center.id if center else None)
+        # hidden input으로 전달된 location ID를 받습니다.
+        location_id = request.POST.get('location') 
+        form = StockInForm(request.POST)
+
         if form.is_valid():
+            # 유효성 검사를 통과한 데이터들을 가져옵니다.
             product = form.cleaned_data['product']
             quantity = form.cleaned_data['quantity']
+            floor = form.cleaned_data['floor']
+            box_size = form.cleaned_data['box_size']
             memo = form.cleaned_data['memo']
-            location = form.cleaned_data['location']
-            product.quantity = F('quantity') + quantity
-            product.save()
-            StockMovement.objects.create(
-                product=product, location=location,
-                movement_type='IN', quantity=quantity, memo=memo
-            )
-            messages.success(request, f"'{product.name}' {quantity}개 입고 처리 완료.")
-            return redirect('stock:in_bound')
+            
+            try:
+                # 전달받은 ID로 Location 객체를 찾습니다.
+                location_obj = Location.objects.get(pk=location_id)
+
+                # 재고 수량 업데이트
+                product.quantity = F('quantity') + quantity
+                product.save(update_fields=['quantity']) # quantity 필드만 업데이트
+
+                # 입고 기록(StockMovement) 생성
+                StockMovement.objects.create(
+                    product=product,
+                    location=location_obj, # Location 객체를 직접 연결
+                    movement_type='IN',
+                    quantity=quantity,
+                    floor=floor,
+                    box_size=box_size,
+                    memo=memo
+                )
+                messages.success(request, f"'{product.name}' {quantity}개 입고 처리 완료 (위치: {location_obj.name}, {floor}층).")
+                return redirect('stock:in_bound')
+            except Location.DoesNotExist:
+                messages.error(request, "선택된 위치 정보를 찾을 수 없습니다.")
         else:
-            messages.error(request, "입력값이 올바르지 않습니다. 모든 항목을 올바르게 선택했는지 확인해주세요.")
+            # 폼 유효성 검사 실패 시
+            error_str = " ".join([f"{field}: {error[0]}" for field, error in form.errors.items()])
+            messages.error(request, f"입력값이 올바르지 않습니다. ({error_str})")
     else:
-        form = StockInForm(center_id=center.id if center else None)
+        # GET 요청 시 빈 폼을 생성합니다.
+        form = StockInForm()
 
     context = {
         'page_title': '재고 입고',
         'form': form,
-        'layout': layout,
-        'locations_json': locations_json,
-        'status_message': status_message, # 새로 만든 상태 메시지를 템플릿으로 전달
+        'layout': layout, # 도면 객체 전달
+        'locations_json': locations_json, # 위치 데이터 JSON 전달
+        'status_message': status_message,
         'active_menu': 'inout'
     }
     return render(request, 'stock/stock_in.html', context)
 
+# 이하 다른 뷰들은 변경 없습니다.
 @login_required
 def layout_manage_view(request):
     """
     도면 관리 페이지 뷰 (목록 조회, 신규 등록, 삭제)
     """
     if request.method == 'POST':
-        # 삭제 요청 처리
         if 'delete_layout' in request.POST:
             layout_id = request.POST.get('layout_id')
             layout = get_object_or_404(WarehouseLayout, pk=layout_id)
@@ -97,7 +121,6 @@ def layout_manage_view(request):
             messages.success(request, f'"{layout.name}" 도면이 삭제되었습니다.')
             return redirect('stock:layout_manage')
         
-        # 신규 등록 처리
         form = WarehouseLayoutForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
@@ -231,46 +254,33 @@ def stock_chart_data_api(request):
 def location_api(request, layout_id):
     """
     도면(layout)에 속한 위치(location) 정보를 처리하는 API
-    - GET: 해당 도면의 모든 위치 정보를 JSON으로 반환
-    - POST: 새로운 위치 정보를 생성하거나 기존 위치 정보를 업데이트/삭제
     """
     layout = get_object_or_404(WarehouseLayout, pk=layout_id)
     
     if request.method == 'GET':
         locations = Location.objects.filter(layout=layout)
-        data = [{
-            'id': loc.id,
-            'name': loc.name,
-            'x_coord': loc.x_coord,
-            'y_coord': loc.y_coord,
-            'width': loc.width,
-            'height': loc.height,
-        } for loc in locations]
+        data = [{'id': loc.id, 'name': loc.name, 'x_coord': loc.x_coord, 'y_coord': loc.y_coord, 'width': loc.width, 'height': loc.height} for loc in locations]
         return JsonResponse(data, safe=False)
 
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            action = data.get('action', 'save') # 'save' 또는 'delete'
+            action = data.get('action', 'save')
 
             if action == 'delete':
                 loc_id = data.get('id')
                 Location.objects.filter(id=loc_id, layout=layout).delete()
                 return JsonResponse({'status': 'success', 'message': '삭제되었습니다.'})
 
-            # 'save' (생성 또는 업데이트)
             loc_name = data.get('name')
             if not loc_name:
                 return JsonResponse({'status': 'error', 'message': '위치 이름이 필요합니다.'}, status=400)
 
             location, created = Location.objects.update_or_create(
-                layout=layout,
-                name=loc_name,
+                layout=layout, name=loc_name,
                 defaults={
-                    'x_coord': data['x_coord'],
-                    'y_coord': data['y_coord'],
-                    'width': data['width'],
-                    'height': data['height'],
+                    'x_coord': data['x_coord'], 'y_coord': data['y_coord'],
+                    'width': data['width'], 'height': data['height'],
                 }
             )
             return JsonResponse({'status': 'success', 'id': location.id, 'created': created})

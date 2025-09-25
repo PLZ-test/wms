@@ -1,9 +1,8 @@
 # stock/forms.py
 from django import forms
 from management.models import Product
-from .models import Location, WarehouseLayout # [추가] WarehouseLayout 모델 import
+from .models import Location, WarehouseLayout, StockMovement # StockMovement 모델 import
 
-# [신규] 도면 업로드를 위한 ModelForm
 class WarehouseLayoutForm(forms.ModelForm):
     class Meta:
         model = WarehouseLayout
@@ -20,35 +19,39 @@ class WarehouseLayoutForm(forms.ModelForm):
         }
 
 class StockInForm(forms.Form):
-    # ... 기존 StockInForm 코드는 그대로 유지 ...
+    # 입고 처리 폼
     product = forms.ModelChoiceField(
         queryset=Product.objects.all(),
         label="상품 선택",
-        empty_label="상품을 선택하세요"
+        empty_label="상품을 선택하세요",
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
-    location = forms.ModelChoiceField(
-        queryset=Location.objects.all(),
-        label="입고 위치",
-        empty_label="위치를 선택하세요"
+    quantity = forms.IntegerField(
+        min_value=1, 
+        label="수량",
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
-    quantity = forms.IntegerField(min_value=1, label="수량")
-    memo = forms.CharField(label="메모", widget=forms.Textarea(attrs={'rows': 3}), required=False)
+    floor = forms.IntegerField(
+        min_value=1, 
+        label="층",
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '몇 층에 적재할까요?'})
+    )
+    box_size = forms.ChoiceField(
+        choices=StockMovement.BOX_SIZE_CHOICES,
+        label="박스 크기",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    memo = forms.CharField(
+        label="메모", 
+        widget=forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}), 
+        required=False
+    )
 
     def __init__(self, *args, **kwargs):
-        center_id = kwargs.pop('center_id', None)
         super().__init__(*args, **kwargs)
-        if center_id:
-            # location 필드는 더 이상 form에서 직접 사용하지 않으므로 queryset 설정이 불필요할 수 있습니다.
-            # 하지만 유효성 검사를 위해 유지합니다.
-            try:
-                layout = WarehouseLayout.objects.get(center_id=center_id)
-                self.fields['location'].queryset = Location.objects.filter(layout=layout)
-            except WarehouseLayout.DoesNotExist:
-                self.fields['location'].queryset = Location.objects.none()
 
 
 class StockUpdateForm(forms.ModelForm):
-    # ... 기존 StockUpdateForm 코드는 그대로 유지 ...
     class Meta:
         model = Product
         fields = ['quantity']

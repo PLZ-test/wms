@@ -23,12 +23,10 @@ class Location(models.Model):
     """
     창고 내 재고 위치 정보를 담는 모델 (좌표 정보 포함)
     """
-    # [수정] null=True, blank=True 추가하여 기존 데이터가 있어도 마이그레이션 가능하도록 함
     layout = models.ForeignKey(WarehouseLayout, on_delete=models.CASCADE, verbose_name='소속 도면', null=True, blank=True)
     name = models.CharField(max_length=100, verbose_name='위치명 (예: A-1-1)')
     description = models.TextField(blank=True, verbose_name='설명')
     
-    # [수정] default=0 추가하여 마이그레이션 시 질문이 나타나지 않도록 개선
     x_coord = models.FloatField(verbose_name='X 좌표 (%)', default=0)
     y_coord = models.FloatField(verbose_name='Y 좌표 (%)', default=0)
     width = models.FloatField(verbose_name='너비 (%)', default=0)
@@ -37,11 +35,8 @@ class Location(models.Model):
     class Meta:
         verbose_name = '재고 위치'
         verbose_name_plural = '재고 위치'
-        # [수정] layout이 null일 수 있으므로 unique_together는 잠시 비활성화 또는 수정 필요
-        # unique_together = ('layout', 'name') 
 
     def __str__(self):
-        # [수정] layout이 없을 수도 있는 상황을 대비
         center_name = self.layout.center.name if self.layout else "미지정"
         return f'[{center_name}] {self.name}'
 
@@ -54,6 +49,14 @@ class StockMovement(models.Model):
         ('IN', '입고'),
         ('OUT', '출고')
     ]
+    # [추가] 박스 크기 선택지를 정의합니다.
+    BOX_SIZE_CHOICES = [
+        ('S', '소형'),
+        ('M', '중형'),
+        ('L', '대형'),
+        ('XL', '특대형'),
+    ]
+
     product = models.ForeignKey('management.Product', on_delete=models.CASCADE, verbose_name='상품')
     location = models.ForeignKey(Location, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='위치')
     movement_type = models.CharField(max_length=3, choices=MOVEMENT_TYPES, verbose_name='구분')
@@ -61,6 +64,10 @@ class StockMovement(models.Model):
     memo = models.TextField(blank=True, verbose_name='메모')
     timestamp = models.DateTimeField(auto_now_add=True, verbose_name='일시')
     
+    # [신규] 층, 박스 크기 필드를 추가합니다.
+    floor = models.PositiveIntegerField(default=1, verbose_name='층')
+    box_size = models.CharField(max_length=10, choices=BOX_SIZE_CHOICES, null=True, blank=True, verbose_name='박스 크기')
+
     class Meta:
         verbose_name = '재고 이동 기록'
         verbose_name_plural = '재고 이동 기록'
