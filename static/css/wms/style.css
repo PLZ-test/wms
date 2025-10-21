@@ -84,31 +84,27 @@ header {
     width: 100%;
 }
 
-/* --- [수정] 페이지 헤더 레이아웃 변경 --- */
 .page-header {
     display: flex;
-    justify-content: space-between; /* 양쪽 끝으로 요소 정렬 */
+    justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    position: relative; /* 자식 요소(h1)의 absolute 위치 기준 */
-    height: 40px; /* 헤더 높이 고정 */
+    position: relative;
+    height: 40px;
 }
 
 .page-header h1 {
     color: #333;
     margin: 0;
-    position: absolute; /* 절대 위치로 변경 */
-    left: 50%; /* 왼쪽에서 50% 지점 */
-    transform: translateX(-50%); /* 자신의 너비 50%만큼 왼쪽으로 이동하여 중앙 정렬 */
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
 }
-/* -------------------------------------- */
-
 
 .page-header .btn-group {
     display: flex;
     gap: 10px;
 }
-
 
 .btn {
     padding: 10px 20px;
@@ -120,7 +116,6 @@ header {
     transition: background-color 0.2s;
 }
 
-/* ...(이하 다른 CSS 코드는 모두 그대로 유지)... */
 .btn-primary {
     background-color: var(--accent-color);
 }
@@ -162,7 +157,6 @@ header {
     margin: 20px auto;
 }
 
-
 .form-container form {
     display: flex;
     flex-direction: column;
@@ -199,11 +193,13 @@ header {
     cursor: not-allowed;
 }
 
+/* --- [수정] 버튼 정렬을 담당하는 부분 --- */
 .form-actions {
     display: flex;
     gap: 10px;
     margin-top: 10px;
-    padding-left: 115px;
+    justify-content: flex-end; /* flex-end로 변경하여 오른쪽으로 정렬 */
+    padding-left: 0; /* 불필요한 왼쪽 여백 제거 */
 }
 
 .io-container {
@@ -271,28 +267,24 @@ header {
     text-align: center;
 }
 
-/* --- [수정] 마지막 컬럼(관리 버튼)의 정렬 및 너비 조정 --- */
 .list-table th:last-child,
 .list-table td:last-child {
-    width: 15%; /* 너비를 살짝 줄여 공간 확보 */
+    width: 15%;
     text-align: center;
 }
 
 .list-table .action-buttons {
     display: flex;
     gap: 5px;
-    justify-content: center; /* 버튼들을 항상 가운데 정렬 */
+    justify-content: center;
 }
 
-/* --- [수정] 테이블 내 버튼 크기 통일 --- */
 .list-table .action-buttons .btn {
     padding: 5px 10px;
     font-size: 12px;
-    width: 100px; /* 모든 버튼의 너비를 동일하게 고정 */
+    width: 100px;
     box-sizing: border-box;
 }
-/* ------------------------------------------- */
-
 
 .dashboard-container {
     display: flex;

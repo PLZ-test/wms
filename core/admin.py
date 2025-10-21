@@ -6,8 +6,8 @@ from django.contrib.auth import views as auth_views
 from users.models import User
 from users.admin import CustomUserAdmin
 from management.models import Center, Shipper, Courier, Product, SalesChannel
-from stock.models import StockMovement, Location, WarehouseLayout
-# from stock.admin import WarehouseLayoutAdmin # 더 이상 필요 없으므로 삭제 또는 주석 처리
+# [수정] stock.models에서 더 이상 사용하지 않는 WarehouseLayout를 import 목록에서 삭제합니다.
+from stock.models import StockMovement, Location
 from orders.models import Order, OrderItem
 from orders.admin import OrderAdmin
 
@@ -28,7 +28,7 @@ wms_admin_site.register(Product)
 wms_admin_site.register(SalesChannel)
 wms_admin_site.register(Order, OrderAdmin)
 
-# [수정] Stock 앱 모델들을 기본 형태로 다시 등록합니다.
+# Stock 앱 모델들을 등록합니다.
 wms_admin_site.register(StockMovement)
 wms_admin_site.register(Location) 
-wms_admin_site.register(WarehouseLayout) # 커스텀 Admin 없이 기본 형태로 등록
+# [삭제] WarehouseLayout 등록 코드를 삭제합니다.

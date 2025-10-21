@@ -1,5 +1,7 @@
 # management/models.py
 from django.db import models
+# [삭제] 순환 참조의 원인이 되는 import 구문을 삭제합니다.
+# from stock.models import StockMovement
 
 class Center(models.Model):
     """
@@ -48,6 +50,14 @@ class Product(models.Model):
     """
     상품 정보를 담는 모델
     """
+    # --- [신규] '박스 크기' 선택지를 모델 내에 직접 정의합니다. ---
+    BOX_SIZE_CHOICES = [
+        ('S', '소형'),
+        ('M', '중형'),
+        ('L', '대형'),
+        ('XL', '특대형'),
+    ]
+
     shipper = models.ForeignKey(Shipper, on_delete=models.CASCADE, verbose_name='화주사')
     name = models.CharField(max_length=200, verbose_name='상품명')
     barcode = models.CharField(max_length=100, unique=True, verbose_name='바코드')
@@ -56,10 +66,16 @@ class Product(models.Model):
     height = models.FloatField(default=0, verbose_name='높이(cm)')
     quantity = models.PositiveIntegerField(default=0, verbose_name='재고 수량')
     
-    # --- [추가] 파렛트 관련 필드 ---
     products_per_pallet = models.PositiveIntegerField(default=0, verbose_name='파렛트 당 상품 수')
     pallet_quantity = models.PositiveIntegerField(default=0, verbose_name='파렛트 수량')
-    # -----------------------------
+
+    # '박스 크기' 필드가 위에서 정의한 선택지를 사용하도록 수정합니다.
+    box_size = models.CharField(
+        max_length=10, 
+        choices=BOX_SIZE_CHOICES, 
+        default='S',
+        verbose_name='박스 크기'
+    )
     
     class Meta:
         verbose_name = '상품'

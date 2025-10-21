@@ -34,7 +34,12 @@
             </div>
         </div>
 
-        {# --- [추가] 새로운 필드 입력 칸 --- #}
+        {# --- [신규] 박스 크기 선택 필드 추가 --- #}
+        <div class="form-group">
+            <label for="{{ form.box_size.id_for_label }}">박스 크기:</label>
+            {{ form.box_size }}
+        </div>
+
         <div class="form-group">
             <label for="{{ form.quantity.id_for_label }}">재고 수량:</label>
             {{ form.quantity }}
@@ -47,7 +52,6 @@
             <label for="{{ form.pallet_quantity.id_for_label }}">파렛트 수량:</label>
             {{ form.pallet_quantity }}
         </div>
-        {# --------------------------------- #}
 
         {% if form.errors %}
             <div class="error-list" style="padding-left: 115px; color: var(--danger-color);">

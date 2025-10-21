@@ -1,25 +1,21 @@
 # stock/forms.py
 from django import forms
 from management.models import Product
-from .models import Location, WarehouseLayout, StockMovement # StockMovement 모델 import
+from .models import Location, StockMovement
 
-class WarehouseLayoutForm(forms.ModelForm):
+class LocationForm(forms.ModelForm):
     class Meta:
-        model = WarehouseLayout
-        fields = ['center', 'name', 'image']
-        labels = {
-            'center': '소속 센터',
-            'name': '도면명',
-            'image': '도면 이미지 파일',
-        }
+        model = Location
+        fields = ['zone', 'name', 'max_floor', 'description']
+        labels = { 'zone': '구역명', 'name': '위치명', 'max_floor': '최대 층수', 'description': '설명' }
         widgets = {
-            'center': forms.Select(attrs={'class': 'form-control'}),
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'image': forms.FileInput(attrs={'class': 'form-control'}),
+            'zone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '예: A구역, B구역'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '예: A-01, B-01'}),
+            'max_floor': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
 class StockInForm(forms.Form):
-    # 입고 처리 폼
     product = forms.ModelChoiceField(
         queryset=Product.objects.all(),
         label="상품 선택",
@@ -27,23 +23,20 @@ class StockInForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'})
     )
     quantity = forms.IntegerField(
-        min_value=1, 
+        min_value=1,
         label="수량",
         widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     floor = forms.IntegerField(
-        min_value=1, 
+        min_value=1,
         label="층",
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '몇 층에 적재할까요?'})
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '입고할 층 번호'})
     )
-    box_size = forms.ChoiceField(
-        choices=StockMovement.BOX_SIZE_CHOICES,
-        label="박스 크기",
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
+    # --- [삭제] 'box_size' 필드를 폼에서 완전히 제거합니다. ---
+    
     memo = forms.CharField(
-        label="메모", 
-        widget=forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}), 
+        label="메모",
+        widget=forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
         required=False
     )
 
@@ -55,9 +48,5 @@ class StockUpdateForm(forms.ModelForm):
     class Meta:
         model = Product
         fields = ['quantity']
-        widgets = {
-            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
-        }
-        labels = {
-            'quantity': '재고 수량'
-        }
+        widgets = { 'quantity': forms.NumberInput(attrs={'class': 'form-control'}) }
+        labels = { 'quantity': '재고 수량' }
