@@ -223,8 +223,11 @@
 
 <p>현재 필터: <strong>{{ selected_center|default:'전체 센터' }}</strong>, <strong>{{ selected_shipper|default:'전체 화주사'
         }}</strong></p>
-{% if messages %}{% for message in messages %}<p class="message {{ message.tags }}">{{ message }}</p>{% endfor %}{%
-endif %}
+{% if messages %}
+{% for message in messages %}
+<p class="message {{ message.tags }}">{{ message }}</p>
+{% endfor %}
+{% endif %}
 
 <div id="visual-stock-display">
     <h3>{{ status_message }}</h3>
