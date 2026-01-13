@@ -6,9 +6,9 @@
     <div>
         <a href="{% url 'management:dashboard' %}" class="btn btn-secondary">뒤로가기</a>
     </div>
-    
+
     <h1>{{ page_title }}</h1>
-    
+
     {% if create_url %}
     <div class="btn-group">
         <a href="{{ create_url }}" class="btn btn-primary">등록</a>
@@ -17,7 +17,8 @@
     <div class="btn-group"></div>
     {% endif %}
 </div>
-<p>현재 필터: <strong>{{ selected_center|default:'전체 센터' }}</strong>, <strong>{{ selected_shipper|default:'전체 화주사' }}</strong></p>
+<p>현재 필터: <strong>{{ selected_center|default:'전체 센터' }}</strong>, <strong>{{ selected_shipper|default:'전체 화주사'
+        }}</strong></p>
 
 <table class="list-table">
     <thead>
@@ -34,23 +35,27 @@
         <tr>
             <td data-label="ID">{{ forloop.counter }}</td>
             {% for col in columns %}
-                <td data-label="{{ col.header }}">
-                    {% if col.key == 'center' %}
-                        {{ item.center.name }}
-                    {% elif col.key == 'shipper' %}
-                        {{ item.shipper.name }}
-                    {% else %}
-                        {# === 바로 이 부분입니다! 'getattr'를 'get_attribute'로 수정합니다. === #}
-                        {{ item|get_attribute:col.key }} 
-                    {% endif %}
-                </td>
+            <td data-label="{{ col.header }}">
+                {% if col.key == 'center' %}
+                {{ item.center.name }}
+                {% elif col.key == 'shipper' %}
+                {{ item.shipper.name }}
+                {% else %}
+                {# === 바로 이 부분입니다! 'getattr'를 'get_attribute'로 수정합니다. === #}
+                {{ item|get_attribute:col.key }}
+                {% endif %}
+            </td>
             {% endfor %}
             <td data-label="관리">
                 <div class="action-buttons">
                     {% if extra_actions %}
-                        {% for action in extra_actions %}
-                            <a href="{% url action.url_name item.pk %}" class="btn {{ action.class }}">{{ action.label }}</a>
-                        {% endfor %}
+                    {% for action in extra_actions %}
+                    {% if action.url_name == 'management:shipper_api_list' %}
+                    <a href="/management/shippers/{{ item.pk }}/api/" class="btn {{ action.class }}">API 설정</a>
+                    {% else %}
+                    <a href="{% url action.url_name item.pk %}" class="btn {{ action.class }}">{{ action.label }}</a>
+                    {% endif %}
+                    {% endfor %}
                     {% endif %}
                     {% if update_url_name %}
                     <a href="{% url update_url_name item.pk %}" class="btn btn-primary">편집</a>

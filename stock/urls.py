@@ -11,6 +11,7 @@ urlpatterns = [
 
     # 입고 및 기록
     path('inbound/', views.stock_in_view, name='in_bound'),
+    path('outbound/', views.stock_out_view, name='out_bound'),
     path('history/', views.stock_movement_history_view, name='history'),
 
     # 재고 위치(구역) 관리
@@ -23,4 +24,8 @@ urlpatterns = [
 
     # API
     path('api/chart-data/', views.stock_chart_data_api, name='chart_data_api'),
+    path('api/shipper-stock-chart/', views.shipper_stock_chart_api, name='shipper_stock_chart'),
+
+    # 대시보드 (신규)
+    path('dashboard/', views.stock_dashboard_view, name='dashboard'),
 ]

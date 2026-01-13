@@ -200,22 +200,14 @@
                 <div class="action-buttons">
                     {% if order.order_status == 'SHIPPED' %}
                     <button class="btn btn-completed btn-fixed-size" disabled>출고완료</button>
-                    {% elif order.order_status == 'CANCELED' %}
-                    <button class="btn btn-secondary btn-fixed-size" disabled>취소됨</button>
                     {% else %}
                     <button class="btn btn-info print-single-btn btn-fixed-size" data-order-id="{{ order.id }}">송장
                         출력</button>
-                    <form method="POST" action="{% url 'orders:cancel' order.id %}" style="display:inline;"
-                        onsubmit="return confirm('주문을 취소하시겠습니까?');">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger btn-fixed-size">취소</button>
-                    </form>
                     {% endif %}
                 </div>
             </td>
         </tr>
-        {% endif %}
-        {% if list_type == 'error' %}
+        {% else %}
         <tr class="error-row" data-unique-id="{{ order.unique_id }}" data-order-no="{{ order.order_no|default:'' }}">
             <td data-label="에러 번호">{% if order.is_db %}{{ order.order_no }}{% else %}행 #{{ order.row_idx }}{% endif %}
             </td>

@@ -16,3 +16,14 @@ class OrdersConfig(AppConfig):
     
     # 관리자 페이지 등에서 보여줄 앱의 한글 이름입니다.
     verbose_name = '주문 관리'
+    
+    def ready(self):
+        """
+        Django 앱이 준비되었을 때 호출됩니다.
+        여기서 주문 수집 스케줄러를 시작합니다.
+        """
+        # runserver로 실행할 때만 스케줄러 시작 (migration 등에서는 실행하지 않음)
+        import sys
+        if 'runserver' in sys.argv:
+            from orders.scheduler import start_scheduler
+            start_scheduler()

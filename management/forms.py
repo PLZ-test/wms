@@ -1,6 +1,22 @@
 # management/forms.py
 from django import forms
-from .models import Center, Shipper, Courier, Product
+from .models import Center, Shipper, Courier, Product, ShipperApiInfo
+
+class ShipperApiInfoForm(forms.ModelForm):
+    class Meta:
+        model = ShipperApiInfo
+        fields = ['channel_type', 'access_key', 'secret_key', 'extra_info', 'is_active']
+        widgets = {
+            'channel_type': forms.Select(attrs={'class': 'form-select'}),
+            'access_key': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Access Key / Client ID'}),
+            'secret_key': forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Secret Key / Client Secret'}),
+            'extra_info': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': '{"vendor_id": "..."} (필요한 경우 JSON 형식으로 입력)'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'is_active': '자동 연동 활성화'
+        }
+
 
 class CenterForm(forms.ModelForm):
     class Meta:

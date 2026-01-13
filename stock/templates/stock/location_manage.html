@@ -3,19 +3,73 @@
 {% block extra_head %}
 <style>
     /* 모달 스타일 */
-    .modal { display: none; position: fixed; z-index: 1002; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
-    .modal-content { position: relative; background-color: #fefefe; margin: 10% auto; padding: 0; border-radius: 8px; width: 90%; max-width: 600px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19); animation: animatetop 0.4s; }
-    @keyframes animatetop { from {top: -300px; opacity: 0} to {top: 0; opacity: 1} }
-    .modal-header { padding: 16px; background-color: var(--accent-color); color: white; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
-    .modal-header h2 { margin: 0; font-size: 1.2em; }
-    .modal-body { padding: 20px; }
-    .close-btn { color: #fff; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1002;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-content {
+        position: relative;
+        background-color: #fefefe;
+        margin: 10% auto;
+        padding: 0;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 600px;
+        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+        animation: animatetop 0.4s;
+    }
+
+    @keyframes animatetop {
+        from {
+            top: -300px;
+            opacity: 0
+        }
+
+        to {
+            top: 0;
+            opacity: 1
+        }
+    }
+
+    .modal-header {
+        padding: 16px;
+        background-color: var(--accent-color);
+        color: white;
+        border-radius: 8px 8px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        font-size: 1.2em;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .close-btn {
+        color: #fff;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <div><a href="{% url 'stock:in_bound' %}" class="btn btn-secondary">입고 페이지로</a></div>
+    <div><a href="{% url 'stock:dashboard' %}" class="btn btn-secondary">뒤로가기</a></div>
     <h1>{{ page_title }}</h1>
     <div class="btn-group">
         {# [신규] '신규 위치 등록' 버튼 #}
@@ -23,7 +77,8 @@
     </div>
 </div>
 
-{% if messages %}{% for message in messages %}<p class="message {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
+{% if messages %}{% for message in messages %}<p class="message {{ message.tags }}">{{ message }}</p>{% endfor %}{%
+endif %}
 
 <table class="list-table">
     <thead>
@@ -47,13 +102,11 @@
             <td data-label="관리">
                 <div class="action-buttons">
                     {# [수정] 수정 버튼에 data 속성 추가 #}
-                    <button class="btn btn-info open-update-modal-btn"
-                            data-pk="{{ loc.pk }}"
-                            data-zone="{{ loc.zone }}"
-                            data-name="{{ loc.name }}"
-                            data-max-floor="{{ loc.max_floor }}"
-                            data-description="{{ loc.description }}">수정</button>
-                    <form action="{% url 'stock:location_delete' loc.pk %}" method="post" onsubmit="return confirm('정말로 삭제하시겠습니까?');">
+                    <button class="btn btn-info open-update-modal-btn" data-pk="{{ loc.pk }}" data-zone="{{ loc.zone }}"
+                        data-name="{{ loc.name }}" data-max-floor="{{ loc.max_floor }}"
+                        data-description="{{ loc.description }}">수정</button>
+                    <form action="{% url 'stock:location_delete' loc.pk %}" method="post"
+                        onsubmit="return confirm('정말로 삭제하시겠습니까?');">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-danger">삭제</button>
                     </form>
@@ -116,7 +169,8 @@
                     </div>
                     <div class="form-group">
                         <label for="update_max_floor">최대 층수:</label>
-                        <input type="number" id="update_max_floor" name="max_floor" class="form-control" min="1" required>
+                        <input type="number" id="update_max_floor" name="max_floor" class="form-control" min="1"
+                            required>
                     </div>
                     <div class="form-group">
                         <label for="update_description">설명:</label>
@@ -134,53 +188,53 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // 공통 모달 관련 DOM 요소
-    const createModal = document.getElementById('create-modal');
-    const updateModal = document.getElementById('update-modal');
-    const allModals = [createModal, updateModal];
+    document.addEventListener('DOMContentLoaded', () => {
+        // 공통 모달 관련 DOM 요소
+        const createModal = document.getElementById('create-modal');
+        const updateModal = document.getElementById('update-modal');
+        const allModals = [createModal, updateModal];
 
-    // '신규 등록' 모달 열기
-    document.getElementById('open-create-modal-btn').addEventListener('click', () => {
-        createModal.style.display = 'block';
-    });
-
-    // '수정' 모달 열기
-    document.querySelectorAll('.open-update-modal-btn').forEach(button => {
-        button.addEventListener('click', (e) => {
-            const data = e.currentTarget.dataset;
-            const form = document.getElementById('update-form');
-            
-            // 폼의 action URL을 해당 위치의 수정 URL로 설정
-            form.action = `/stock/location/${data.pk}/update/`;
-            
-            // 모달 폼에 기존 데이터 채우기
-            document.getElementById('update_zone').value = data.zone;
-            document.getElementById('update_name').value = data.name;
-            document.getElementById('update_max_floor').value = data.maxFloor;
-            document.getElementById('update_description').value = data.description;
-            
-            updateModal.style.display = 'block';
+        // '신규 등록' 모달 열기
+        document.getElementById('open-create-modal-btn').addEventListener('click', () => {
+            createModal.style.display = 'block';
         });
-    });
 
-    // 모든 모달의 닫기(X) 버튼 이벤트
-    allModals.forEach(modal => {
-        if (modal) {
-            modal.querySelector('.close-btn').addEventListener('click', () => {
-                modal.style.display = 'none';
+        // '수정' 모달 열기
+        document.querySelectorAll('.open-update-modal-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const data = e.currentTarget.dataset;
+                const form = document.getElementById('update-form');
+
+                // 폼의 action URL을 해당 위치의 수정 URL로 설정
+                form.action = `/stock/location/${data.pk}/update/`;
+
+                // 모달 폼에 기존 데이터 채우기
+                document.getElementById('update_zone').value = data.zone;
+                document.getElementById('update_name').value = data.name;
+                document.getElementById('update_max_floor').value = data.maxFloor;
+                document.getElementById('update_description').value = data.description;
+
+                updateModal.style.display = 'block';
             });
-        }
-    });
+        });
 
-    // 모달 바깥 영역 클릭 시 닫기
-    window.addEventListener('click', (event) => {
+        // 모든 모달의 닫기(X) 버튼 이벤트
         allModals.forEach(modal => {
-            if (event.target == modal) {
-                modal.style.display = 'none';
+            if (modal) {
+                modal.querySelector('.close-btn').addEventListener('click', () => {
+                    modal.style.display = 'none';
+                });
             }
         });
+
+        // 모달 바깥 영역 클릭 시 닫기
+        window.addEventListener('click', (event) => {
+            allModals.forEach(modal => {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
     });
-});
 </script>
 {% endblock %}

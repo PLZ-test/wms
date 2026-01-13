@@ -1,0 +1,43 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="{% url 'management:shipper_api_list' shipper.pk %}" class="btn btn-secondary">뒤로가기</a>
+    </div>
+    <h1>{{ page_title }}</h1>
+    <div class="btn-group"></div>
+</div>
+
+<div class="form-container">
+    <div class="alert alert-info">
+        <strong>💡 입력 안내</strong><br>
+        - <strong>쿠팡</strong>: Access Key와 Secret Key를 입력해주세요. 추가 정보(Vendor ID)는 JSON 칸에
+        <code>{"vendor_id": "A00..."}</code> 형태로 입력하세요.<br>
+        - <strong>네이버</strong>: Client ID와 Client Secret을 입력해주세요.
+    </div>
+
+    <form id="main-form" method="post">
+        {% csrf_token %}
+
+        {% for field in form %}
+        <div class="form-group">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}
+            <small class="form-text text-muted">{{ field.help_text }}</small>
+            {% endif %}
+            {% if field.errors %}
+            <div class="error-list">{{ field.errors }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </form>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary" form="main-form">
+            {% if form.instance.pk %}수정 저장{% else %}등록하기{% endif %}
+        </button>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .invoice-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #ccc;
+            padding: 20px;
+            page-break-after: always;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .info-table th,
+        .info-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .info-table th {
+            background-color: #f5f5f5;
+            width: 120px;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .items-table th,
+        .items-table td {
+            border: 1px solid #333;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .items-table th {
+            background-color: #eee;
+        }
+
+        @media print {
+            .no-print {
+                display: none;
+            }
+
+            body {
+                padding: 0;
+            }
+
+            .invoice-container {
+                border: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="no-print" style="text-align: right; margin-bottom: 20px;">
+        <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">인쇄하기</button>
+        <button onclick="window.close()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">닫기</button>
+    </div>
+
+    {% for order in orders %}
+    <div class="invoice-container">
+        <div class="header">
+            <h1>운송장 / 주문서</h1>
+            <p>NO: {{ order.order_no }}</p>
+        </div>
+
+        <table class="info-table">
+            <tr>
+                <th>수취인</th>
+                <td>{{ order.recipient_name }}</td>
+                <th>연락처</th>
+                <td>{{ order.recipient_phone }}</td>
+            </tr>
+            <tr>
+                <th>배송지</th>
+                <td colspan="3">{{ order.address }}</td>
+            </tr>
+            <tr>
+                <th>배송메모</th>
+                <td colspan="3">{{ order.delivery_memo|default:"-" }}</td>
+            </tr>
+            <tr>
+                <th>판매채널</th>
+                <td>{{ order.channel.name|default:"-" }}</td>
+                <th>화주사</th>
+                <td>{{ order.shipper.name|default:"-" }}</td>
+            </tr>
+        </table>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>상품명</th>
+                    <th>옵션</th>
+                    <th>바코드</th>
+                    <th>수량</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items.all %}
+                <tr>
+                    <td style="text-align: left;">{{ item.product.name }}</td>
+                    <td>{{ item.product_option|default:"-" }}</td>
+                    <td>{{ item.product.barcode }}</td>
+                    <td>{{ item.quantity }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 30px; text-align: center;">
+            <p>위와 같이 배송 부탁드립니다.</p>
+            <p>{{ order.order_date|date:"Y년 m월 d일" }}</p>
+        </div>
+    </div>
+    {% endfor %}
+</body>
+
+</html>

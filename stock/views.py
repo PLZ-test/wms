@@ -1,7 +1,7 @@
 # stock/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
-from django.db.models import F, Sum, Count, Q
+from django.db.models import F, Sum, Count, Q, Case, When, IntegerField
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -31,13 +31,19 @@ def stock_in_view(request):
             
             if locations.exists():
                 stock_data = StockMovement.objects.filter(
-                    location__in=locations,
-                    movement_type='IN'
+                    location__in=locations
                 ).values(
                     'location_id', 'floor', 'product__name'
                 ).annotate(
-                    total_quantity=Sum('quantity')
-                )
+                    total_quantity=Sum(
+                        Case(
+                            When(movement_type='IN', then=F('quantity')),
+                            When(movement_type='OUT', then=-F('quantity')),
+                            default=0,
+                            output_field=IntegerField()
+                        )
+                    )
+                ).filter(total_quantity__gt=0)
                 
                 stocks_by_location = defaultdict(lambda: defaultdict(dict))
                 for stock in stock_data:
@@ -108,6 +114,133 @@ def stock_in_view(request):
         'active_menu': 'inout'
     }
     return render(request, 'stock/stock_in.html', context)
+
+
+@login_required
+@transaction.atomic
+def stock_out_view(request):
+    """
+    재고 출고 페이지 뷰
+    """
+    selected_center_name = request.session.get('selected_center')
+    center = None
+    locations_with_status = []
+    status_message = ""
+
+    if selected_center_name:
+        center = Center.objects.filter(name=selected_center_name).first()
+        if center:
+            locations = Location.objects.filter(center=center).order_by('name')
+            
+            if locations.exists():
+                # [수정] 현재고(입고-출고) 계산
+                stock_data = StockMovement.objects.filter(
+                    location__in=locations
+                ).values(
+                    'location_id', 'floor', 'product__name'
+                ).annotate(
+                    total_quantity=Sum(
+                        Case(
+                            When(movement_type='IN', then=F('quantity')),
+                            When(movement_type='OUT', then=-F('quantity')),
+                            default=0,
+                            output_field=IntegerField()
+                        )
+                    )
+                ).filter(total_quantity__gt=0)
+                
+                stocks_by_location = defaultdict(lambda: defaultdict(dict))
+                for stock in stock_data:
+                    stocks_by_location[stock['location_id']][stock['floor']][stock['product__name']] = stock['total_quantity']
+
+                for loc in locations:
+                    floors_status = []
+                    for i in range(1, loc.max_floor + 1):
+                        stock_info = stocks_by_location[loc.id].get(i, {})
+                        floors_status.append({
+                            'floor_number': i,
+                            'stock_info': stock_info,
+                            'is_stocked': bool(stock_info)
+                        })
+                        
+                    locations_with_status.append({
+                        'id': loc.id,
+                        'name': loc.name,
+                        'max_floor': loc.max_floor,
+                        'floors': floors_status
+                    })
+                status_message = f"'{center.name}'의 재고 현황이 로드되었습니다. 출고할 위치를 클릭하세요."
+            else:
+                status_message = f"'{center.name}'에 등록된 재고 위치가 없습니다."
+    else:
+        status_message = "출고 작업을 진행할 센터를 상단 필터에서 먼저 선택해주세요."
+
+    if request.method == 'POST':
+        location_id = request.POST.get('location')
+        floor_num = request.POST.get('floor')
+        form = StockInForm(request.POST) # Form 재사용 (상품, 수량, 메모)
+
+        if form.is_valid():
+            product = form.cleaned_data['product']
+            quantity = form.cleaned_data['quantity']
+            memo = form.cleaned_data['memo']
+            
+            try:
+                location_obj = Location.objects.get(pk=location_id)
+
+                # 재고 확인 로직은 복잡하므로 여기서는 단순화하여 전체 수량만 체크하거나
+                # 또는 마이너스 재고 허용 여부에 따라 다름. 일단은 진행.
+                # 실제로는 해당 위치의 해당 상품 재고를 확인해야 함.
+                
+                # [중요] 해당 위치의 해당 상품 재고 확인
+                current_stock_qs = StockMovement.objects.filter(
+                    location=location_obj,
+                    floor=floor_num,
+                    product=product
+                ).aggregate(
+                    total=Sum(
+                        Case(
+                            When(movement_type='IN', then=F('quantity')),
+                            When(movement_type='OUT', then=-F('quantity')),
+                            default=0,
+                            output_field=IntegerField()
+                        )
+                    )
+                )
+                current_stock = current_stock_qs['total'] or 0
+                
+                if current_stock < quantity:
+                     messages.error(request, f"재고 부족! 현재고: {current_stock}개, 요청: {quantity}개")
+                else:
+                    product.quantity = F('quantity') - quantity
+                    product.save(update_fields=['quantity'])
+
+                    StockMovement.objects.create(
+                        product=product,
+                        location=location_obj,
+                        movement_type='OUT',
+                        quantity=quantity,
+                        floor=floor_num,
+                        box_size=product.box_size,
+                        memo=memo
+                    )
+                    messages.success(request, f"'{product.name}' {quantity}개 출고 처리 완료.")
+                    return redirect('stock:out_bound')
+            except Location.DoesNotExist:
+                messages.error(request, "선택된 위치 정보를 찾을 수 없습니다.")
+        else:
+            messages.error(request, "입력값이 올바르지 않습니다.")
+    else:
+        form = StockInForm()
+
+    context = {
+        'page_title': '재고 출고',
+        'form': form,
+        'locations': locations_with_status,
+        'status_message': status_message,
+        'active_menu': 'inout'
+    }
+    return render(request, 'stock/stock_out.html', context)
 
 
 @login_required
@@ -232,3 +365,55 @@ def stock_chart_data_api(request):
             daily_data[date_str][m['movement_type']] = m['total_quantity']
     datasets = [{'label': '입고량', 'data': [daily_data[label]['IN'] for label in labels], 'borderColor': 'rgba(54, 162, 235, 0.7)', 'backgroundColor': 'rgba(54, 162, 235, 0.7)', 'fill': False, 'tension': 0.1}, {'label': '출고량', 'data': [daily_data[label]['OUT'] for label in labels], 'borderColor': 'rgba(255, 99, 132, 0.7)', 'backgroundColor': 'rgba(255, 99, 132, 0.7)', 'fill': False, 'tension': 0.1}]
     return JsonResponse({'labels': labels, 'datasets': datasets})
+
+@login_required
+def stock_dashboard_view(request):
+    """
+    [신규] 재고 대시보드 뷰
+    - 입/출고 메뉴 진입점
+    - 화주사별 재고 현황 차트 포함
+    """
+    context = {
+        'page_title': '재고 대시보드',
+        'active_menu': 'inout' # 입출고 메뉴 활성화
+    }
+    return render(request, 'stock/dashboard.html', context)
+
+@login_required
+def shipper_stock_chart_api(request):
+    """
+    [신규] 화주사별 재고 수량(현재고) API
+    - 파이 차트용 데이터 반환 { labels: [], data: [] }
+    """
+    # 화주사별로 관련된 상품들의 총 입고-출고 합계를 구함
+    
+    # 1. 모든 화주사 가져오기
+    # 2. 각 화주사의 모든 Product의 StockMovement 합산 (IN - OUT)
+    # 효율성을 위해 StockMovement에서 Group By shipper
+    
+    # Note: StockMovement -> Product -> Shipper 관계
+    
+    stock_by_shipper = StockMovement.objects.values(
+        'product__shipper__name'
+    ).annotate(
+        total_stock=Sum(
+            Case(
+                When(movement_type='IN', then=F('quantity')),
+                When(movement_type='OUT', then=-F('quantity')),
+                default=0,
+                output_field=IntegerField()
+            )
+        )
+    ).filter(total_stock__gt=0).order_by('-total_stock')
+
+    labels = []
+    data = []
+
+    for item in stock_by_shipper:
+        shipper_name = item['product__shipper__name']
+        qty = item['total_stock']
+        if shipper_name and qty > 0:
+             labels.append(shipper_name)
+             data.append(qty)
+    
+    return JsonResponse({'labels': labels, 'data': data})

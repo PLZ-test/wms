@@ -10,6 +10,7 @@
         min-height: calc(100vh - var(--header-height) - 40px);
         box-sizing: border-box;
     }
+
     .home-menu-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -17,21 +18,23 @@
         width: 80%;
         max-width: 1400px;
     }
+
     .menu-card {
         background-color: #ffffff;
         border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
         padding: 30px;
         transition: transform 0.2s, box-shadow 0.2s;
         display: block;
         text-decoration: none;
         color: inherit;
     }
+
     .menu-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
     }
-    
+
     .chart-container {
         height: 220px;
         position: relative;
@@ -46,9 +49,11 @@
         justify-content: space-between;
         align-items: center;
     }
+
     .menu-card h2 i {
         margin-right: 12px;
     }
+
     .date-picker-input {
         padding: 5px 10px;
         border: 1px solid #ccc;
@@ -56,13 +61,14 @@
         font-size: 0.8em;
         cursor: pointer;
     }
-    
+
     @media (max-width: 768px) {
         .home-menu-grid {
             grid-template-columns: 1fr;
             width: 90%;
             gap: 20px;
         }
+
         .home-container {
             padding: 20px 10px;
         }
@@ -77,7 +83,7 @@
 
 <div class="home-container">
     <div class="home-menu-grid">
-        
+
         <a href="{% url 'orders:manage' %}" class="menu-card">
             <h2>
                 <span><i class="fas fa-shopping-cart"></i>주문</span>
@@ -89,7 +95,7 @@
         </a>
 
         {# [수정] 입출고 카드 링크 및 차트 요소 변경 #}
-        <a href="{% url 'stock:in_bound' %}" class="menu-card">
+        <a href="{% url 'stock:dashboard' %}" class="menu-card">
             <h2>
                 <span><i class="fas fa-exchange-alt"></i>입출고</span>
                 <input type="text" id="stock-datepicker" class="date-picker-input" placeholder="날짜 선택">
@@ -115,48 +121,81 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    let orderChartInstance = null;
-    let stockChartInstance = null; // [추가] 재고 차트 인스턴스 변수
+    document.addEventListener('DOMContentLoaded', () => {
+        let orderChartInstance = null;
+        let stockChartInstance = null; // [추가] 재고 차트 인스턴스 변수
 
-    function updateOrderChart(startDate, endDate) {
-        const url = `{% url 'orders:chart_data' %}?start=${startDate}&end=${endDate}`;
-        fetch(url)
-            .then(response => response.json())
-            .then(chartData => {
-                const ctx = document.getElementById('dashboardOrderChart');
-                if (!ctx) return;
-                if (orderChartInstance) orderChartInstance.destroy();
-                orderChartInstance = new Chart(ctx, {
-                    type: 'line', data: chartData,
-                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { position: 'top' } }, interaction: { mode: 'index', intersect: false } }
-                });
-            }).catch(error => console.error('주문 차트 데이터 로딩 실패:', error));
-    }
-    
-    // [신규] 재고 차트 업데이트 함수
-    function updateStockChart(startDate, endDate) {
-        const url = `{% url 'stock:chart_data_api' %}?start=${startDate}&end=${endDate}`;
-        fetch(url)
-            .then(response => response.json())
-            .then(chartData => {
-                const ctx = document.getElementById('dashboardStockChart');
-                if (!ctx) return;
-                if (stockChartInstance) stockChartInstance.destroy();
-                stockChartInstance = new Chart(ctx, {
-                    type: 'line', data: chartData,
-                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'top' } }, interaction: { mode: 'index', intersect: false } }
-                });
-            }).catch(error => console.error('재고 차트 데이터 로딩 실패:', error));
-    }
+        function updateOrderChart(startDate, endDate) {
+            const url = `{% url 'orders:chart_data' %}?start=${startDate}&end=${endDate}`;
+            fetch(url)
+                .then(response => response.json())
+                .then(chartData => {
+                    const ctx = document.getElementById('dashboardOrderChart');
+                    if (!ctx) return;
+                    if (orderChartInstance) orderChartInstance.destroy();
+                    orderChartInstance = new Chart(ctx, {
+                        type: 'line', data: chartData,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            elements: {
+                                line: {
+                                    tension: 0.4  // [신규] 부드러운 곡선 적용
+                                }
+                            },
+                            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+                            plugins: { legend: { position: 'top' } },
+                            interaction: { mode: 'index', intersect: false }
+                        }
+                    });
+                }).catch(error => console.error('주문 차트 데이터 로딩 실패:', error));
+        }
+
+        // [신규] 재고 차트 업데이트 함수
+        function updateStockChart(startDate, endDate) {
+            const url = `{% url 'stock:chart_data_api' %}?start=${startDate}&end=${endDate}`;
+            fetch(url)
+                .then(response => response.json())
+                .then(chartData => {
+                    const ctx = document.getElementById('dashboardStockChart');
+                    if (!ctx) return;
+                    if (stockChartInstance) stockChartInstance.destroy();
+                    stockChartInstance = new Chart(ctx, {
+                        type: 'line', data: chartData,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            elements: {
+                                line: {
+                                    tension: 0.4  // [신규] 부드러운 곡선 적용
+                                }
+                            },
+                            scales: { y: { beginAtZero: true } },
+                            plugins: { legend: { position: 'top' } },
+                            interaction: { mode: 'index', intersect: false }
+                        }
+                    });
+                }).catch(error => console.error('재고 차트 데이터 로딩 실패:', error));
+        }
 
 
-    if (window.initDatePicker) {
-        window.initDatePicker('order-datepicker', updateOrderChart);
-        window.initDatePicker('stock-datepicker', updateStockChart); // [추가] 재고 datepicker 초기화
-    } else {
-        console.error("initDatePicker 함수를 찾을 수 없습니다. main.js가 로드되었는지 확인하세요.");
-    }
-});
+        if (window.initDatePicker) {
+            window.initDatePicker('order-datepicker', updateOrderChart);
+            window.initDatePicker('stock-datepicker', updateStockChart); // [추가] 재고 datepicker 초기화
+        } else {
+            console.error("initDatePicker 함수를 찾을 수 없습니다. main.js가 로드되었는지 확인하세요.");
+        }
+        // [신규] 날짜 입력창 클릭 시 링크 이동 방지 (이벤트 위임 방식)
+        document.querySelectorAll('.menu-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                // 클릭된 요소가 날짜 입력창이면 링크 이동(기본 동작)을 막음
+                if (e.target.matches('.date-picker-input') || e.target.classList.contains('flatpickr-input')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+        });
+
+    });
 </script>
 {% endblock %}

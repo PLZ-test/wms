@@ -72,3 +72,59 @@ class OrderItem(models.Model):
         
     def __str__(self):
         return f"{self.product.name} - {self.quantity}개"
+
+
+class ApiCollectionLog(models.Model):
+    """
+    API 주문 수집 로그
+    """
+    LOG_STATUS_CHOICES = [
+        ('SUCCESS', '성공'),
+        ('PARTIAL', '부분 성공'),
+        ('FAILED', '실패'),
+    ]
+    
+    shipper = models.ForeignKey(
+        'management.Shipper',
+        on_delete=models.CASCADE,
+        verbose_name='화주사'
+    )
+    channel_type = models.CharField(
+        max_length=20,
+        verbose_name='쇼핑몰'
+    )
+    collected_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='수집 시각'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=LOG_STATUS_CHOICES,
+        default='SUCCESS',
+        verbose_name='상태'
+    )
+    total_count = models.IntegerField(
+        default=0,
+        verbose_name='총 주문 수'
+    )
+    success_count = models.IntegerField(
+        default=0,
+        verbose_name='성공 건수'
+    )
+    error_count = models.IntegerField(
+        default=0,
+        verbose_name='실패 건수'
+    )
+    error_message = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='에러 메시지'
+    )
+    
+    class Meta:
+        verbose_name = 'API 수집 로그'
+        verbose_name_plural = 'API 수집 로그'
+        ordering = ['-collected_at']
+    
+    def __str__(self):
+        return f"{self.shipper.name} - {self.channel_type} ({self.collected_at.strftime('%Y-%m-%d %H:%M')})"

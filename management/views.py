@@ -6,9 +6,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest
 
-from .models import Center, Shipper, Courier, Product
+from .models import Center, Shipper, Courier, Product, ShipperApiInfo
 # --- [수정] ProductCreateDirectForm을 import 목록에 추가 ---
-from .forms import CenterForm, ShipperForm, CourierForm, ProductForm, ProductCreateDirectForm
+from .forms import CenterForm, ShipperForm, CourierForm, ProductForm, ProductCreateDirectForm, ShipperApiInfoForm
 
 
 @login_required
@@ -98,8 +98,7 @@ class ShipperListView(LoginRequiredMixin, ListView):
             'delete_url_name': 'management:shipper_delete',
             # --- [수정] 버튼 구성 변경 ---
             'extra_actions': [
-                {'label': '상품 목록', 'url_name': 'management:product_list', 'class': 'btn-info'},
-                {'label': '상품 등록', 'url_name': 'management:product_create', 'class': 'btn-primary'}
+                {'label': 'API 설정', 'url_name': 'management:shipper_api_list', 'class': 'btn-info'}
             ],
             # --------------------------
             'active_menu': 'management'
@@ -280,3 +279,77 @@ def product_create_direct_view(request):
     # 새로운 템플릿 파일을 사용
     return render(request, 'management/product_create_direct.html', context)
 # --------------------------------------------------------
+
+# --- Shipper API Info (화주사 연동 설정) 뷰 ---
+
+@login_required
+def shipper_api_list_view(request, shipper_pk):
+    """
+    특정 화주사의 API 연동 정보 목록을 보여주는 뷰
+    """
+    shipper = get_object_or_404(Shipper, pk=shipper_pk)
+    api_infos = ShipperApiInfo.objects.filter(shipper=shipper)
+    context = {
+        'shipper': shipper,
+        'api_infos': api_infos,
+        'page_title': f'{shipper.name} API 연동 설정',
+        'active_menu': 'management'
+    }
+    return render(request, 'management/shipper_api_list.html', context)
+
+@login_required
+def shipper_api_create_view(request, shipper_pk):
+    """
+    특정 화주사의 API 연동 정보를 등록하는 뷰
+    """
+    shipper = get_object_or_404(Shipper, pk=shipper_pk)
+    if request.method == 'POST':
+        form = ShipperApiInfoForm(request.POST)
+        if form.is_valid():
+            api_info = form.save(commit=False)
+            api_info.shipper = shipper
+            api_info.save()
+            return redirect('management:shipper_api_list', shipper_pk=shipper.pk)
+    else:
+        form = ShipperApiInfoForm()
+    context = {
+        'form': form,
+        'shipper': shipper,
+        'page_title': f'{shipper.name} API 연동 등록',
+        'active_menu': 'management'
+    }
+    return render(request, 'management/shipper_api_form.html', context)
+
+@login_required
+def shipper_api_update_view(request, pk):
+    """
+    API 연동 정보를 수정하는 뷰
+    """
+    api_info = get_object_or_404(ShipperApiInfo, pk=pk)
+    if request.method == 'POST':
+        form = ShipperApiInfoForm(request.POST, instance=api_info)
+        if form.is_valid():
+            form.save()
+            return redirect('management:shipper_api_list', shipper_pk=api_info.shipper.pk)
+    else:
+        form = ShipperApiInfoForm(instance=api_info)
+        
+    context = {
+        'form': form,
+        'shipper': api_info.shipper,
+        'page_title': 'API 연동 정보 편집',
+        'active_menu': 'management'
+    }
+    return render(request, 'management/shipper_api_form.html', context)
+
+@login_required
+def shipper_api_delete_view(request, pk):
+    """
+    API 연동 정보를 삭제하는 뷰
+    """
+    api_info = get_object_or_404(ShipperApiInfo, pk=pk)
+    shipper_pk = api_info.shipper.pk
+    if request.method == 'POST':
+        api_info.delete()
+        return redirect('management:shipper_api_list', shipper_pk=shipper_pk)
+    return HttpResponseBadRequest("잘못된 요청입니다.")

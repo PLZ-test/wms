@@ -157,11 +157,13 @@
             class="btn btn-success">엑셀 다운로드</a>
         {% elif list_type == 'error' and orders %}
         <button id="batch-retry-btn" class="btn btn-primary">수정 확인</button>
-        <button id="cancel-all-btn" class="btn btn-danger">전체 취소</button>
         {% endif %}
     </div>
 </div>
 
+<!-- ========================================== -->
+<!-- CASE A: 성공 주문 목록 (Success List) -->
+<!-- ========================================== -->
 {% if list_type == 'success' %}
 <table class="list-table">
     <thead>
@@ -178,7 +180,8 @@
         {% for order in orders %}
         <tr id="order-row-{{ order.id }}">
             <td data-label="선택">
-                <input type="checkbox" class="order-checkbox" value="{{ order.id }}" {% if order.order_status == 'SHIPPED' %}disabled{% endif %}>
+                <input type="checkbox" class="order-checkbox" value="{{ order.id }}" {% if order.order_status=='SHIPPED'
+                    %}disabled{% endif %}>
             </td>
             <td data-label="주문번호">{{ order.order_no }}</td>
             <td data-label="화주사">{% if order.shipper %}{{ order.shipper.name }}{% else %}-{% endif %}</td>
@@ -214,6 +217,9 @@
 </table>
 {% endif %}
 
+<!-- ========================================== -->
+<!-- CASE B: 오류 주문 목록 (Error List) -->
+<!-- ========================================== -->
 {% if list_type == 'error' %}
 <table class="list-table">
     <thead>
@@ -232,9 +238,6 @@
                 {% else %}
                 행 #{{ order.row_idx }}
                 {% endif %}
-                <button type="button" class="delete-error-btn"
-                    style="border:none; background:none; color: #e74c3c; cursor: pointer; font-weight: bold; margin-left: 5px; font-size: 1.2em;"
-                    data-unique-id="{{ order.unique_id }}" title="삭제">&times;</button>
             </td>
             <td data-label="수취인">
                 <input type="text" name="recipient_name" class="value-field"
@@ -248,7 +251,6 @@
                             class="value-field {% if 'shipper_name' in order.error_fields %}is-error{% endif %}"
                             value="{{ order.shipper_name|default:'' }}">
                     </div>
-
                     <div class="error-detail-item">
                         <label for="product_identifier-{{ forloop.counter }}">상품</label>
                         <div class="autocomplete-wrapper">
@@ -292,6 +294,7 @@
 </table>
 {% endif %}
 
+<!-- 상세보기 모달 HTML -->
 <div id="details-modal" class="modal">
     <div class="modal-content">
         <span class="close-btn" id="details-modal-close">&times;</span>
@@ -302,12 +305,13 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if orders_json %}
 <script>
-    // [수정] ordersData가 없어도 에러가 나지 않도록 기본값 처리
-    const ordersData = {% if orders_json %} JSON.parse('{{ orders_json|escapejs }}') {% else %} null {% endif %};
+    const ordersData = JSON.parse('{{ orders_json|escapejs }}');
 </script>
+{% endif %}
 <script>
-    // JS 로직 복원
+    // JS 로직 복원 (가독성을 위해 핵심 로직 유지)
     document.addEventListener('DOMContentLoaded', function () {
         const modal = document.getElementById('details-modal');
         const modalBody = document.getElementById('modal-body');
@@ -414,67 +418,6 @@
             });
             document.addEventListener('click', e => { if (e.target !== input) itemsDiv.innerHTML = ''; });
         });
-
-        document.querySelectorAll('.delete-error-btn').forEach(btn => {
-            btn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                if (!confirm('접수취소 하시겠습니까?')) return;
-
-                const uniqueId = this.dataset.uniqueId;
-                fetch('{% url "orders:delete_error_item" %}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-                    body: JSON.stringify({ unique_id: uniqueId })
-                }).then(r => r.json()).then(d => {
-                    if (d.status === 'success') {
-                        window.location.reload();
-                    } else {
-                        alert(d.message);
-                    }
-                });
-            });
-        });
-
-        // 전체 취소 버튼 클릭 이벤트
-        const cancelAllBtn = document.getElementById('cancel-all-btn');
-        if (cancelAllBtn) {
-            cancelAllBtn.addEventListener('click', function () {
-                if (!confirm('모든 오류 주문을 취소하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-                    return;
-                }
-
-                const button = this;
-                button.disabled = true;
-                button.textContent = '처리 중...';
-
-                fetch('{% url "orders:cancel_all_errors" %}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify({
-                        date_str: '{{ request.resolver_match.kwargs.date_str }}'
-                    })
-                })
-                    .then(r => r.json())
-                    .then(d => {
-                        if (d.status === 'success') {
-                            alert(d.message);
-                            window.location.reload();
-                        } else {
-                            alert('오류: ' + d.message);
-                            button.disabled = false;
-                            button.textContent = '전체 취소';
-                        }
-                    })
-                    .catch(error => {
-                        alert('처리 중 오류가 발생었습니다: ' + error);
-                        button.disabled = false;
-                        button.textContent = '전체 취소';
-                    });
-            });
-        }
     });
 </script>
 {% endblock %}

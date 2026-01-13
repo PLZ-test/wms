@@ -34,4 +34,10 @@ urlpatterns = [
     
     # --- [추가] 대시보드에서 직접 상품을 등록하는 URL ---
     path('products/new-direct/', views.product_create_direct_view, name='product_create_direct'),
+
+    # --- [추가] 화주사 API 연동 관리 ---
+    path('shippers/<int:shipper_pk>/api/', views.shipper_api_list_view, name='shipper_api_list'),
+    path('shippers/<int:shipper_pk>/api/new/', views.shipper_api_create_view, name='shipper_api_create'),
+    path('api-info/<int:pk>/edit/', views.shipper_api_update_view, name='shipper_api_update'),
+    path('api-info/<int:pk>/delete/', views.shipper_api_delete_view, name='shipper_api_delete'),
 ]

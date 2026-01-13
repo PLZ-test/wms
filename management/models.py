@@ -23,7 +23,8 @@ class Shipper(models.Model):
     """
     center = models.ForeignKey(Center, on_delete=models.CASCADE, verbose_name='소속 센터')
     name = models.CharField(max_length=100, unique=True, verbose_name='화주사명')
-    contact = models.CharField(max_length=100, blank=True, verbose_name='담당자')
+    contact = models.CharField(max_length=100, blank=True, null=True, verbose_name='연락처')
+    address = models.CharField(max_length=255, blank=True, null=True, verbose_name='주소')
     
     class Meta:
         verbose_name = '화주사'
@@ -31,6 +32,41 @@ class Shipper(models.Model):
         
     def __str__(self):
         return self.name
+
+class ShipperApiInfo(models.Model):
+    CHANNEL_CHOICES = [
+        ('COUPANG', '쿠팡 (Coupang)'),
+        ('NAVER', '네이버 스마트스토어 (Naver SmartStore)'),
+        ('11ST', '11번가 (11st)'),
+        ('GMARKET', 'G마켓 (Gmarket)'),
+        ('AUCTION', '옥션 (Auction)'),
+        ('WEMAKEPRICE', '위메프 (WeMakePrice)'),
+        ('TMON', '티몬 (TMON)'),
+        ('INTERPARK', '인터파크 (Interpark)'),
+    ]
+    
+    shipper = models.ForeignKey(Shipper, on_delete=models.CASCADE, related_name='api_infos', verbose_name='화주사')
+    channel_type = models.CharField(max_length=20, choices=CHANNEL_CHOICES, verbose_name='쇼핑몰')
+    
+    # 공통 인증 정보
+    access_key = models.CharField(max_length=255, verbose_name='Access Key / Client ID')
+    secret_key = models.CharField(max_length=255, verbose_name='Secret Key / Client Secret')
+    
+    # 추가 정보 (Vendor ID 등 딕셔너리 형태 저장)
+    extra_info = models.TextField(blank=True, default='{}', verbose_name='추가 정보(JSON)')
+    
+    is_active = models.BooleanField(default=True, verbose_name='활성화 여부')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '화주사 API 정보'
+        verbose_name_plural = '화주사 API 정보 목록'
+        unique_together = ('shipper', 'channel_type')
+
+    def __str__(self):
+        return f"{self.shipper.name} - {self.get_channel_type_display()}"
+
 
 class Courier(models.Model):
     """

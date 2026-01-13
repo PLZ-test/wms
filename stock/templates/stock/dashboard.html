@@ -1,0 +1,229 @@
+{% extends 'core/base.html' %}
+
+
+{% block extra_head %}
+<style>
+    .inventory-dashboard-container {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        padding: 30px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    /* 상단 차트 섹션 */
+    .chart-section {
+        background-color: #fff;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .chart-section h3 {
+        margin: 0 0 20px 0;
+        font-size: 1.3em;
+        color: #333;
+        border-bottom: 2px solid #f0f0f0;
+        padding-bottom: 10px;
+    }
+
+    .chart-wrapper {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+
+    /* 중앙 메뉴 그리드 */
+    .menu-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+    }
+
+    .menu-card {
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        padding: 40px;
+        text-align: center;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.3s, box-shadow 0.3s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 250px;
+        border: 2px solid transparent;
+    }
+
+    .menu-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .menu-card i {
+        font-size: 4em;
+        margin-bottom: 20px;
+        display: block;
+    }
+
+    .menu-card h2 {
+        font-size: 2em;
+        margin: 0;
+        font-weight: bold;
+    }
+
+    .menu-card p {
+        margin-top: 10px;
+        color: #666;
+        font-size: 1.1em;
+    }
+
+    /* 입고 카드 스타일 */
+    .menu-card.entry {
+        border-bottom: 5px solid #007bff;
+    }
+
+    .menu-card.entry i {
+        color: #007bff;
+    }
+
+    .menu-card.entry:hover {
+        border-color: #007bff;
+        background-color: #f8fbff;
+    }
+
+    /* 출고 카드 스타일 */
+    .menu-card.exit {
+        border-bottom: 5px solid #dc3545;
+    }
+
+    .menu-card.exit i {
+        color: #dc3545;
+    }
+
+    .menu-card.exit:hover {
+        border-color: #dc3545;
+        background-color: #fff8f8;
+    }
+
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="inventory-dashboard-container">
+
+    <div class="page-header">
+        <div>
+            <a href="{% url 'core:dashboard' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> 메인으로</a>
+        </div>
+        <h1>재고 대시보드</h1>
+        <div class="btn-group">
+            <a href="{% url 'stock:location_manage' %}" class="btn btn-outline-secondary">재고 위치 관리</a>
+            <a href="{% url 'stock:history' %}" class="btn btn-outline-secondary">입출고 내역</a>
+        </div>
+    </div>
+
+    <!-- 상단: 화주사별 재고 분포 차트 -->
+    <div class="chart-section">
+        <h3><i class="fas fa-chart-pie"></i> 화주사별 재고 점유율</h3>
+        <div class="chart-wrapper">
+            <canvas id="shipperStockChart"></canvas>
+        </div>
+    </div>
+
+    <!-- 중앙: 입/출고 메뉴 -->
+    <div class="menu-grid">
+        <a href="{% url 'stock:in_bound' %}" class="menu-card entry">
+            <i class="fas fa-box-open"></i>
+            <h2>입고 (Entry)</h2>
+            <p>상품을 창고에 적재합니다.</p>
+        </a>
+        <a href="{% url 'stock:out_bound' %}" class="menu-card exit">
+            <i class="fas fa-truck-loading"></i>
+            <h2>출고 (Exit)</h2>
+            <p>상품을 창고에서 불출합니다.</p>
+        </a>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const ctx = document.getElementById('shipperStockChart');
+        if (ctx) {
+            fetch("{% url 'stock:shipper_stock_chart' %}")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.labels.length === 0) {
+                        // 데이터가 없을 때 처리
+                        ctx.getContext('2d').font = "20px Arial";
+                        ctx.getContext('2d').fillText("표시할 재고 데이터가 없습니다.", 50, 50);
+                        return;
+                    }
+
+                    new Chart(ctx, {
+                        type: 'doughnut', //, pie 대신 도넛 차트가 더 모던해 보임
+                        data: {
+                            labels: data.labels,
+                            datasets: [{
+                                data: data.data,
+                                backgroundColor: [
+                                    'rgba(54, 162, 235, 0.8)',
+                                    'rgba(255, 99, 132, 0.8)',
+                                    'rgba(255, 206, 86, 0.8)',
+                                    'rgba(75, 192, 192, 0.8)',
+                                    'rgba(153, 102, 255, 0.8)',
+                                    'rgba(255, 159, 64, 0.8)',
+                                    '#2c3e50', '#e74c3c', '#3498db'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'right',
+                                    labels: {
+                                        font: { size: 14 }
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (context) {
+                                            let label = context.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            let value = context.parsed;
+                                            let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                            let percentage = ((value / total) * 100).toFixed(1) + "%";
+                                            return label + value.toLocaleString() + '개 (' + percentage + ')';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading chart data:', error);
+                });
+        }
+    });
+</script>
+{% endblock %}

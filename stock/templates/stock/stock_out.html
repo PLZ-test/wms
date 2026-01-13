@@ -41,7 +41,7 @@
 
     .modal-header {
         padding: 16px;
-        background-color: var(--accent-color);
+        background-color: #dc3545;
         color: white;
         border-radius: 8px 8px 0 0;
         display: flex;
@@ -114,14 +114,19 @@
         position: relative;
     }
 
+    .floor-cell:not(.stocked) {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
     .floor-cell.stocked {
         background-color: #28a745;
         color: white;
-        cursor: not-allowed;
+        cursor: pointer;
     }
 
-    .floor-cell:not(.stocked):hover {
-        background-color: #d0d0d0;
+    .floor-cell.stocked:hover {
+        background-color: #218838;
     }
 
     .tooltip {
@@ -193,9 +198,9 @@
     }
 
     .stock-tab.active {
-        border-color: var(--accent-color);
-        background-color: #f0f7ff;
-        color: var(--accent-color);
+        border-color: #dc3545;
+        background-color: #fff0f0;
+        color: #dc3545;
     }
 
     .stock-tab i {
@@ -206,11 +211,11 @@
 </style>
 
 <div class="stock-tabs">
-    <a href="{% url 'stock:in_bound' %}" class="stock-tab active">
+    <a href="{% url 'stock:in_bound' %}" class="stock-tab">
         <i class="fas fa-arrow-down"></i>
         입고
     </a>
-    <a href="{% url 'stock:out_bound' %}" class="stock-tab">
+    <a href="{% url 'stock:out_bound' %}" class="stock-tab active">
         <i class="fas fa-arrow-up"></i>
         출고
     </a>
@@ -255,7 +260,7 @@ endif %}
 <div id="inbound-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 id="modal-title">입고 처리</h2>
+            <h2 id="modal-title">출고 처리</h2>
             <span class="close-btn">&times;</span>
         </div>
         <div class="modal-body">
@@ -272,7 +277,7 @@ endif %}
                     <div class="form-group"><label for="{{ form.memo.id_for_label }}">{{ form.memo.label }}:</label>{{
                         form.memo }}</div>
 
-                    <div class="form-actions"><button type="submit" class="btn btn-primary">입고 처리</button></div>
+                    <div class="form-actions"><button type="submit" class="btn btn-danger">출고 처리</button></div>
                 </form>
             </div>
         </div>
@@ -289,7 +294,7 @@ endif %}
         const hiddenLocationInput = document.getElementById('id_location');
         const hiddenFloorInput = document.getElementById('id_floor');
 
-        document.querySelectorAll('.floor-cell:not(.stocked)').forEach(cell => {
+        document.querySelectorAll('.floor-cell.stocked').forEach(cell => {
             cell.addEventListener('click', () => {
                 const locationId = cell.dataset.locationId;
                 const locationName = cell.dataset.locationName;
@@ -297,7 +302,7 @@ endif %}
 
                 hiddenLocationInput.value = locationId;
                 hiddenFloorInput.value = floorNumber;
-                modalTitle.textContent = `'${locationName}' 위치 ${floorNumber}층에 입고 처리`;
+                modalTitle.textContent = `'${locationName}' 위치 ${floorNumber}층에 출고 처리`;
                 document.getElementById('stock-in-form').reset();
                 modal.style.display = 'block';
             });
